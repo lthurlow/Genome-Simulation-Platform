@@ -1,0 +1,63 @@
+CHANGES
+	- Is "MSG_process_sleep(dat->get_time()); // camt go above
+	  MSG_task_create" line needed in PULL section of send() function...
+	  simgrid.cc
+	- Move "MSG_process_sleep(tsk_in->get_pullrate());" in the while loop
+	  that generates PULLS at the end of recv() to before the
+	  "MSG_process_create()" call for sends (as it is now pulls started for
+	  an object immediately on completion of the push)... simgrid.cc
+	    - Same for ssc_recv
+	- Is "IF NO PUSHES HAVE FINISHED" code ever executed in send() function?
+	  I don't think it should be because pulls not started until after push
+	  is complete (in recv() function)... simgrid.cc
+	    - Same for ssc_send
+	- (Related to previous) loop in "if (finished.empty())" block in send()
+	  is no longer needed because PULLS are no longer suspended pending
+	  completion of the PUSH (PULL tasks are not created until the push is
+	  complete)... simgrid.cc
+	    - Same for ssc_send
+	- Along the lines of the ASSERT items above... I don't think the
+	  "finished" and "s_procs" containers are needed anymore..? For both
+	  cached and non-cached... simgrid.cc
+	- Fixed problem with links being repeated on a path. Problem was the
+	  "link_map" container used "edge_info" (edge performance values) as
+	  the key, but edge_info is not guaranteed to be unique for each edge
+	  in a graph. I changed it to "edge_desc" (pair of verts), which is.
+	  Lingering concern is the vert ordering might cause find()'s to fail...
+	  I added assert()'s after each call to make sure this isn't the case...
+	  but this probably needs to be investigated a bit more thoroughly.
+        - Add seed to GT-ITM invocation... main.cc, file_format.cc, types.hpp
+	- Change seed type (types.hpp)
+	- Made pull rate Exponential (simgrid.cc).
+	- Enabled tracing and generated a trace graph topology pdf. (simgrid.cc)
+	- Added "-b" option for window size ("b" for "buffer"). (simgrid.cc,
+	  util.cc, main.cc, types.hpp)
+	- Changes to capacity functionality (-c or -C) (simgrid.cc, main.cc):
+	    - Modify "c" links
+	    - Modify from MB/s to B/s (in code)
+	- Fixed processing -c -C options to modify "c" links, too. (simgrid.cc,
+	  util.cc)
+	- Changed window size command line to be in KB (main.cc, util.cc)
+	- Change -w and -W to straight milliseconds (util.cc, simgrid.cc).
+	- Change -t to # of pulls per object (util.cc, simgrid.cc, main.cc).
+	- Change -c and -C to tail-circuit capacity and core circuit capacity,
+	  respectively. Also change command line argument to GB/s (including
+	  fractional... so floating point format). (util.cc, main.cc,
+	  simgrid.cc)
+	- Changed capacity from int to long (40Gb/s needed this).
+	  (file_format.cc bgl_graph_info.hpp simgrid.cc util.cc)
+	- Fixed bug where I didn't set TCP_gamma option using -b command line
+	  value for -D 2 simulation.
+	- Fixed discrepency between host index in the simulation (where routers
+	  have index 0..<#verts-1> and sites have index
+	  <#verts>..<(2*#verts)-1>.).
+
+TESTS
+    - Assume 250 pulls per genome during the month after it is pushed
+	o 1 pull every 10,368 seconds
+	o 63 requests in a week, 9 per day
+    - Million Genome scenario of 1,000,000 pushes over 5 years =>
+	o 1 push every 157 seconds
+	o 16,667 pushes per month, 4,167 pushes per week, 556 per day
+    - Window for 70ms one-way latency = 2*(1,250,000,000B/s * .07s) = 
+      2 * 1.25*10^9 * 7*10^-2 = 2 * 1.25 * 7 * 10^7 = 175MB

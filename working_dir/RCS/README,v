@@ -1,0 +1,72 @@
+head	1.1;
+access;
+symbols;
+locks
+	lthurlow:1.1; strict;
+comment	@# @;
+
+
+1.1
+date	2012.09.25.23.22.31;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@9/25/12
+First attempt at a readme
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@Genome Simulation Platform (GSP)
+
+OVERVIEW
+
+This simulation platforms main purpose is to be used to help genomic 
+researchers build an efficient genomic network.
+
+REQUIRED TOOLS
+1) Download GT-ITM (Sketchy ~ Best to use version included here)
+2) Download Boost Graph Library
+3) Download GNU Scientific Library
+4) Download Simgrid
+
+CONFIGURATION
+1) Linux & Unix
+  - Unpack tar.
+  - In Makefile:
+    - Change -L to where Simgrid/lib is located
+    - Change -I to SimGrid/include is located
+    - Change -I to BGL/include is located
+    - Change -I to GSL/include is located
+
+2) Mac & Windows
+  Don't try it. =)
+
+FILES
+1) headers
+  bgl_graph_info.hpp - Boost Graph Library Header information
+  randvars2.hpp - Gnu Scientific Library Headers
+  routing.hpp - Routing.cc Headers
+  simgrid.hpp - Simgridd.cc Headers (Simulation Headers)
+  types.hpp - Main Headers + Classes
+2) source
+  file_format.cc - GT-ITM code handler + dot conversion
+  main.cc - Handles main flow of program
+  randvars2.cc - GSL calls
+  routing.cc - Handles BGL routing code
+  simgrid.cc - Main Simulation code
+  util.cc - Utility Functions (prints)
+3) misc
+  Makefile - Builds program
+  README - This file
+
+HELP/INFO
+email: lthurlow@@soe.ucsc.edu (valid email until 2014)
+last updated 9/25/12
+@

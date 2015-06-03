@@ -1,0 +1,1898 @@
+head	1.10;
+access;
+symbols;
+locks
+	lthurlow:1.10; strict;
+comment	@// @;
+
+
+1.10
+date	2012.10.08.19.12.30;	author lthurlow;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2012.09.25.22.59.00;	author lthurlow;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2012.09.21.23.42.29;	author lthurlow;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2012.09.21.17.51.54;	author lthurlow;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2012.09.06.17.47.06;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.09.05.19.14.28;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.08.31.05.39.36;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.08.30.23.26.56;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.08.27.23.49.49;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.08.23.20.40.24;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@Code to run simgrid simulation
+,
+@
+
+
+1.10
+log
+@10-8-12
+Before brad moves over his simgrid.
+@
+text
+@#include<stdio.h>
+#include <stdlib.h>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <queue>
+#include <stack>
+
+#include <cassert> /*BRS*/
+
+#include "bgl_graph_info.hpp"
+#include "routing.hpp"
+#include "randvars2.hpp"
+#include "simgrid.hpp"
+
+#include "msg/msg.h"
+#include "surf/simgrid_dtd.h"
+#include "xbt/log.h" //for a log channel
+#include "xbt/asserts.h"
+
+using namespace std;
+using namespace boost;
+
+/* task comp size is an MSG value, we dont use mainly for fact that cache to
+ * local server should be neglabable in the scope of flow durations */
+unsigned int task_comp_size = 0;
+/* task comm size is the data object size, in our case objects*/
+unsigned int task_comm_size = 300000;
+int nb_hosts; /* All declared hosts */
+
+gsl_rng *r;
+
+typedef std::map <edge_desc, int> link_map; //mapping of edges to link values
+std::map<long,long> gene_pulls; // # of times genome gets pulled
+std::map<long,vector<long> > genome; //used to store where a genome is located
+std::vector<std::vector<std::priority_queue<long> > > location; // used to pick the closest.
+
+/* Function to write the top of the xml file */
+void write_header(ofstream *f, int p){
+  *f << "<?xml version='1.0'?>\n";
+  *f << "\t<!DOCTYPE platform SYSTEM \"http://simgrid.gforge.inria.fr/simgrid.dtd\">\n";
+  *f << "\t<!-- This File is needed for SimGrid, used by this Simulation-->\n";
+  *f << "\t<!-- For modification of this file - review help menu-->\n";
+  *f << "\t<platform version=\"3\">\n";
+  if (p == 1)
+    *f << "\t<AS  id=\"AS0\"  routing=\"Full\">\n\n";
+}
+
+/* Function to write the bottom of the xml file */
+void write_closer(ofstream *f, int p){
+  if (p == 1)
+    *f << "\t</AS>\n";
+  *f << "\t</platform>\n";
+}
+
+/* Writes the host section of the platform xml file */
+void write_hosts(ofstream *f, int hosts){
+  //ROUTERS
+  for (int i=0; i< hosts; i++){
+    // Host Power is meaningless unless caching the data takes time
+    *f << "\t\t<host id=\"r" << i << "\" power=\"1000000\"/>\n";
+  }
+
+  *f << "\n";
+
+  //SITES
+  for (int i=0; i< hosts; i++){
+    // Host Power is meaningless unless caching the data takes time
+    *f << "\t\t<host id=\"s" << i << "\" power=\"1000000\"/>\n";
+  }
+  *f << "\n";
+}
+
+/* Writes out all the links with converted weight to latency */
+void write_links(ofstream *f, Graph *G, link_map* M, std::pair<long,long> p){
+  int i = 0;
+  edge_iter ei,ei_end;
+  for (boost::tie(ei, ei_end) = boost::edges(*G); ei != ei_end; ++ei){
+    long link_cap;
+    if (p.first == p.second){
+      link_cap = p.first;
+    } else {
+      link_cap = UniformD(p.first, p.second);
+    }
+    *f << "\t\t<link id=\"l" <<  i << "\" bandwidth=\"" << link_cap; //10000";
+    edge_info prop = (*G)[*ei];
+    double lat = prop.weight * .0002; // convert the weight link to a latency
+    *f << "\" latency=\"" << lat <<"\" />\n";
+    M->insert( std::make_pair(*ei,i) );
+    i++;
+  }
+  *f << "\n";
+  //Add links to connect Site Notes to Router nodes
+  for (int i = 0; i < (int)num_vertices(*G); i++){ 
+    *f << "\t\t<link id=\"c" <<  i << "\" bandwidth=\"" << "1250"; //FIXME Need to make this variable
+    *f << "\" latency=\"" << ".003" <<"\" />\n";
+  }
+  *f << "\n";
+}
+
+/* Write all routes to platform xml file, using Boost's next hop generated struct*/
+void write_routes(ofstream *f, Graph *G, next_hop *H, link_map* M){
+  //routing protocol dependent
+
+  for (int i = 0; i < (int)num_vertices(*G); i++){ 
+    *f << "\t\t<route src=\"r" << i;
+    *f << "\" dst=\"s" << i << "\">\n";
+    *f << "\t\t\t<link_ctn id=\"c" << i << "\"/>\n";
+    *f << "\t\t</route>\n";
+  }
+  *f << "\n";
+
+  std::set<pair<int, int> > edge_set; //make sure no dup edges in file
+  std::pair<set< pair< int, int > >::iterator, bool > ret;
+  int x,y;
+  /* iterate through all src-dest edges */
+  for (int i = 0; i < (int)num_vertices(*G); i++){ 
+    for (int j = 0; j < (int)num_vertices(*G); j++){
+      if (i > j){
+        x = j;
+        y = i;
+      } else {
+        x = i;
+        y = j;
+      }
+      /*This edge set removes SURF PARSE multiple defn. of routes*/
+      ret = edge_set.insert(std::make_pair(x,y));
+      if (i != j && ret.second){ //if they are the same vert, dont add to route
+        std::vector<int> links;
+        std::stack<edge_desc> edge_stack; //use a stack to print links correctly
+
+        /* xml formating for routes */
+        *f << "\t\t<route src=\"r" << i;
+        *f << "\" dst=\"r" << j << "\">\n";
+        *f << "\t\t\t";
+        
+        int src = i;
+        int dest = j;
+        /* find all links used to go from src -> dest  */
+        while ((int)(*H)[src][dest] != dest){
+          edge_desc edge = boost::edge((*H)[src][dest],dest,*G).first;
+          edge_stack.push(edge);
+          dest = (int)(*H)[src][dest];
+        }
+        /* print all links used in the correct ordering */
+        while (!edge_stack.empty()){
+          edge_desc e = edge_stack.top();
+	  map<edge_desc,int>::iterator link = M->find(e);
+	  assert(link != M->end());
+          *f << "<link_ctn id=\"l" << link->second << "\"/>";
+          edge_stack.pop();
+        }
+        *f << "\n";
+        *f << "\t\t</route>\n";
+      }
+    }
+  }
+
+  *f << "\n";
+
+  std::set<pair<int, int> > edge_set4; //make sure no dup edges in file
+  std::pair<set< pair< int, int > >::iterator, bool > ret4;
+
+  for (int i = 0; i < (int)num_vertices(*G); i++){ 
+    for (int j = 0; j < (int)num_vertices(*G); j++){
+      if (i > j){
+        x = j;
+        y = i;
+      } else {
+        x = i;
+        y = j;
+      }
+      /*This edge set removes SURF PARSE multiple defn. of routes*/
+      ret4 = edge_set4.insert(std::make_pair(x,y));
+      if (i != j && ret4.second){ //if they are the same vert, dont add to route
+        std::vector<int> links;
+        std::stack<edge_desc> edge_stack; //use a stack to print links correctly
+
+        /* xml formating for routes */
+        *f << "\t\t<route src=\"r" << i;
+        *f << "\" dst=\"s" << j << "\">\n";
+        *f << "\t\t\t";
+        
+        int src = i;
+        int dest = j;
+        /* find all links used to go from src -> dest  */
+        while ((int)(*H)[src][dest] != dest){
+          edge_desc edge = boost::edge((*H)[src][dest],dest,*G).first;
+          edge_stack.push(edge);
+          dest = (int)(*H)[src][dest];
+        }
+        /* print all links used in the correct ordering */
+        while (!edge_stack.empty()){
+          edge_desc e = edge_stack.top();
+          map<edge_desc,int>::iterator link = M->find(e);
+	  assert(link != M->end());
+          *f << "<link_ctn id=\"l" << link->second << "\"/>";
+          edge_stack.pop();
+        }
+        *f << "<link_ctn id=\"c" << j << "\"/>";
+        *f << "\n";
+        *f << "\t\t</route>\n";
+      }
+    }
+  }
+
+
+  *f << "\n";
+
+  std::set<pair<int, int> > edge_set3; //make sure no dup edges in file
+  std::pair<set< pair< int, int > >::iterator, bool > ret3;
+
+  for (int i = 0; i < (int)num_vertices(*G); i++){ 
+    for (int j = 0; j < (int)num_vertices(*G); j++){
+      if (i > j){
+        x = j;
+        y = i;
+      } else {
+        x = i;
+        y = j;
+      }
+      /*This edge set removes SURF PARSE multiple defn. of routes*/
+      ret3 = edge_set3.insert(std::make_pair(x,y));
+      if (i != j && ret3.second){ //if they are the same vert, dont add to route
+        std::vector<int> links;
+        std::stack<edge_desc> edge_stack; //use a stack to print links correctly
+
+        /* xml formating for routes */
+        *f << "\t\t<route src=\"s" << i;
+        *f << "\" dst=\"r" << j << "\">\n";
+        *f << "\t\t\t";
+        
+        int src = i;
+        int dest = j;
+        /* find all links used to go from src -> dest  */
+        while ((int)(*H)[src][dest] != dest){
+          edge_desc edge = boost::edge((*H)[src][dest],dest,*G).first;
+          edge_stack.push(edge);
+          dest = (int)(*H)[src][dest];
+        }
+        /* print all links used in the correct ordering */
+        *f << "<link_ctn id=\"c" << i << "\"/>";
+        while (!edge_stack.empty()){
+          edge_desc e = edge_stack.top();
+          map<edge_desc,int>::iterator link = M->find(e);
+	  assert(link != M->end());
+          *f << "<link_ctn id=\"l" << link->second << "\"/>";
+          edge_stack.pop();
+        }
+        *f << "\n";
+        *f << "\t\t</route>\n";
+      }
+    }
+  }
+
+  *f << "\n";
+
+  std::set<pair<int, int> > edge_set2; //make sure no dup edges in file
+  std::pair<set< pair< int, int > >::iterator, bool > ret2;
+
+  for (int i = 0; i < (int)num_vertices(*G); i++){ 
+    for (int j = 0; j < (int)num_vertices(*G); j++){
+      if (i > j){
+        x = j;
+        y = i;
+      } else {
+        x = i;
+        y = j;
+      }
+      /*This edge set removes SURF PARSE multiple defn. of routes*/
+      ret2 = edge_set2.insert(std::make_pair(x,y));
+      if (i != j && ret2.second){ //if they are the same vert, dont add to route
+        std::vector<int> links;
+        std::stack<edge_desc> edge_stack; //use a stack to print links correctly
+
+        /* xml formating for routes */
+        *f << "\t\t<route src=\"s" << i;
+        *f << "\" dst=\"s" << j << "\">\n";
+        *f << "\t\t\t";
+        
+        int src = i;
+        int dest = j;
+        /* find all links used to go from src -> dest  */
+        while ((int)(*H)[src][dest] != dest){
+          edge_desc edge = boost::edge((*H)[src][dest],dest,*G).first;
+          edge_stack.push(edge);
+          dest = (int)(*H)[src][dest];
+        }
+        /* print all links used in the correct ordering */
+        *f << "<link_ctn id=\"c" << i << "\"/>";
+        while (!edge_stack.empty()){
+          edge_desc e = edge_stack.top();
+          map<edge_desc,int>::iterator link = M->find(e);
+	  assert(link != M->end());
+          *f << "<link_ctn id=\"l" << link->second << "\"/>";
+          edge_stack.pop();
+        }
+        *f << "<link_ctn id=\"c" << j << "\"/>";
+        *f << "\n";
+        *f << "\t\t</route>\n";
+      }
+    }
+  }
+
+}
+
+/* Need to write the platform file for SimGrid simulation
+   Graph G will be used to iterate over each vertex and create a host for each
+   next_hop H will be used to create the links between each host
+*/
+
+void write_platform(Graph *G, next_hop *Hop, UI in){
+  //link map keeps edge (src,dest) -> link # information
+  link_map* link_name = new link_map();
+  
+  ofstream plat;
+  // Name the output file platform.xml
+  plat.open("platform.xml");
+  //get the number of hosts to create from the # of verts in graph
+  int hosts = boost::num_vertices(*G);
+
+  //Write all of the xml header information
+  write_header(&plat,1);
+
+  // each host will have a power and name, name will be index
+  // <host id="h0" power="100000000"/>
+  write_hosts(&plat, hosts);
+
+  std::pair<long, long> link_pair(in->get_mincap(), in->get_maxcap());
+
+  // links will have b/w and some latency proportional to their weight.
+  // <link id="l0" bandwidth="X" latency="X" />
+  // Higher Weight --> Greater Latency -> 0-100 --> 0ms -> 20ms --> divide by 5
+  // convert to float * 10e-3 W*.0002
+  write_links(&plat, G, link_name, link_pair);
+
+  //routes - transverse the next_hop for each host, and iterate each link
+  // <route src="h0" dst="h1">
+  // \t<link_ctn id ="l0"/><link_ctn id="l1"/>
+  //</route>
+  write_routes(&plat, G, Hop, link_name);
+  
+  //End the xml format with </AS> \n </platform>
+  write_closer(&plat,1);
+}
+
+/* Copyright (c) 2008, 2009, 2010. The SimGrid Team.
+ * All rights reserved.                                                     */
+
+/* This program is free software; you can redistribute it and/or modify it
+ * under the terms of the license (GNU LGPL) which comes with this package. */
+
+XBT_LOG_NEW_DEFAULT_CATEGORY(CLOUD,"Cloud based Simulation in SimGrid");
+
+long label = 0; // used to increment the label on pushes
+double global_time = 0.0; //used for the pushing requests at given time
+double start_time = 0.0; //start time to begin pulling
+long sim_pushes = 0; // how many pushes have been done in simulation
+long sim_pulls = 0; // how many pulls have been done
+float avg_trans = 0.0; // the average time per transfer
+long debug_id = 0; //used for finding matching push/pull requests - DEBUG
+
+int recv(int argc, char *argv[]){
+  /* get name of process -> returns current process -> convert to int */
+  int host_number = atoi(MSG_process_get_name(MSG_process_self()));
+
+  /* Mailbox is the talking point between agents*/
+  char mailbox[256];
+
+  /* set task to send to NULL (otherwise a previous task may partially reside*/
+  m_task_t task = NULL;
+  
+  /* Some unused variable MACRO in misc.h */
+  _XBT_GNUC_UNUSED int res;
+
+  task = NULL;
+  sprintf(mailbox,"%d", host_number);
+  res = MSG_task_receive(&(task), MSG_process_get_name(MSG_process_self()));
+  xbt_assert(res == MSG_OK, "MSG_task_get failed");
+  MSG_task_execute(task); // Run task
+  /* Get all the task data that was passed in */
+  task_info *tsk = ((task_info*)(MSG_task_get_data(task)));
+  long task_lab = tsk->get_label();
+  char pop[256];
+  /* Determine if this was a push or pull in the network*/ 
+  if (tsk->get_pop() == 1){ 
+    sprintf(pop,"%s","pull");
+    gene_pulls[task_lab]++; //increment the genome that was finished
+  } else {
+    sprintf(pop,"%s","push");
+    sim_pushes++;
+  }
+  /* Determine the total time the request was outstanding */
+  avg_trans += (MSG_get_clock() - tsk->get_start());
+
+  UI tsk_in = tsk->get_UI();
+  long task_id = tsk->get_id()+1; // add the debug information to the string
+  XBT_INFO("FINISH %s of Genome #%ld -> ID: %ld",pop,task_lab,task_id);
+  MSG_task_destroy(task); //destory the task
+
+  //make sure only pushes execute this code
+  while (sim_pulls < tsk_in->get_pulls() && tsk->get_pop() == 0){ 
+    char* name_host;
+    xbt_dynar_t hosts = MSG_hosts_as_dynar(); 
+    //set destination to the last of the routers
+    proc_info *dat = new proc_info((nb_hosts/2)-1,300000.0,0,1);
+    dat->set_UI(tsk_in);
+    //needs to take into account tht nb_hosts/2 -> nb_hosts are all sites
+    name_host = bprintf("%d",UniformD((nb_hosts/2),nb_hosts));
+    dat->set_label(task_lab);
+    MSG_process_sleep(abs(Exponential(tsk_in->get_pullrate())));
+    MSG_process_create( name_host, send, dat, xbt_dynar_get_as(hosts,atoi(name_host),m_host_t) );
+    //needs to take into account tht nb_hosts/2 -> nb_hosts are all sites
+    //destination needs to be a valid router
+    name_host = bprintf("%d",(nb_hosts/2)-1);
+    MSG_process_create( name_host, recv, NULL, xbt_dynar_get_as(hosts,(nb_hosts/2)-1,m_host_t) );
+    sim_pulls++;
+  }
+  return 0;
+}
+
+int send(int argc, char *argv[]){
+  /* get name of process -> returns current process -> convert to int */
+  int host_number = atoi(MSG_process_get_name(MSG_process_self()));
+
+  /* Mailbox is the talking point between agents*/
+  char mailbox[256];
+
+  /* set task to send to NULL (otherwise a previous task may partially reside*/
+  m_task_t task = NULL;
+  
+  /* Some unused variable MACRO in misc.h */
+  _XBT_GNUC_UNUSED int res;
+
+  /* Pull Requests will ENTER HERE */
+  /* Push Requests will ENTER HERE */
+  //create debug string for debug 
+  char debug[256];
+  
+  //Get information passed in from the process to find destinantion, size, etc.
+  proc_info *dat  = (proc_info*)MSG_process_get_data(MSG_process_self());
+
+  //convert host_number to a string for mailbox 
+  sprintf(mailbox,"%d",dat->get_recv());
+
+  //Set the comm size to that of what was passed in
+  task_comm_size = dat->get_size();
+
+  //Update the time for which this process will be injected into network
+
+  char pop[256];
+  task_info *t;
+  
+  if ( dat->get_pop() == 0){ //push the data
+    global_time += abs(Exponential(dat->get_time())); //add to global time, sleep time
+    MSG_process_sleep(global_time); // camt go above MSG_task_create
+    t = new task_info(label++,0,(debug_id++)); // create a new task with label info
+    sprintf(pop,"%s","push");
+    XBT_INFO("START %s: Genome #%ld from %d to %d -> ID: %ld",
+              pop,t->get_label(),host_number,dat->get_recv(), debug_id);
+  } else { //pull the data
+    sprintf(pop,"%s","pull");
+
+    long ele = dat->get_label();
+
+    t = new task_info(ele,1,(debug_id++)); //create the task for pulling
+    XBT_INFO("START %s: Genome #%ld from %d to %d -> ID: %ld",
+              pop,t->get_label(),dat->get_recv(),host_number,debug_id);
+  }
+  t->set_start(MSG_get_clock()); //set the start time for the process
+  t->set_UI(dat->get_UI());
+
+  /* Ship off the task to simulator */
+  task = MSG_task_create(debug, task_comp_size, task_comm_size, t);
+  //MSG_task_set_category(task,"log");
+  MSG_task_send(task, mailbox);
+
+  return 0;
+}
+
+void single_server(UI in){
+  DEBUGE("In simGrid \n");
+  int res;
+  /* Initialie "some MSG" internal data */
+  /* int *argc, char **argv */
+  int num_args = 6;
+  char* arguments[6];
+  arguments[0] = (char*)"platform.xml"; /* Does something... */
+  /* This log line is a pain in the ass, without it, it will crash occasionally 
+   * The string is set up in a certain format such that parsing can be done.
+  */
+  arguments[1] = (char*)"--log=root.fmt:[%h:%P:(%i)%e%r]%e[%c/%p]%e%m%n";
+  arguments[2] = (char*)"--cfg=tracing:1";
+  arguments[3] = (char*)"--cfg=tracing/uncategorized:1";
+  arguments[4] = (char*)"--cfg=tracing/filename:sim.trace";
+  arguments[5] = (char*)"--cfg=triva/uncategorized:sim.plist";
+
+  MSG_global_init(&num_args, arguments); /* set up enviroment with platform.xml file*/
+  MSG_create_environment("platform.xml"); /* nb_hosts is set to a dynamic array set */
+  xbt_dynar_t hosts = MSG_hosts_as_dynar(); 
+  /* get the length of the dynamic array = # of hosts */
+  nb_hosts =  xbt_dynar_length(hosts); 
+  /* Let SimGrid know that hosts use the host function */
+  MSG_function_register("send", send);
+  MSG_function_register("recv", recv);
+  /* Log this event at INFO priority */
+  XBT_INFO("Number of host '%d'",nb_hosts);
+  XBT_INFO("Reciever %d", (nb_hosts/2)-1);
+
+  //initialize gene_pull counter for each object
+  for(long itor = 0; itor < in->get_objects(); itor++){
+    gene_pulls[itor] = 0;
+  }
+  
+  char* name_host;  
+
+  //push these objects objects will spawn pulls
+  for (int i=0; i< in->get_objects(); i++){
+    //needs to account for the destination.
+    proc_info *dat = new proc_info((nb_hosts/2)-1,300000.0,in->get_pushrate(),0);
+    dat->set_UI(in);
+
+    //needs to take into account tht nb_hosts/2 -> nb_hosts are all sites
+    name_host = bprintf("%d",UniformD(0,(nb_hosts/2)));//,nb_hosts));
+    MSG_process_create( name_host, send, dat, xbt_dynar_get_as(hosts,atoi(name_host),m_host_t) );
+    //needs to take into account tht nb_hosts/2 -> nb_hosts are all sites
+    //destination needs to be a valid router
+    name_host = bprintf("%d",(nb_hosts/2)-1);
+    MSG_process_create( name_host, recv, NULL, xbt_dynar_get_as(hosts,(nb_hosts/2)-1,m_host_t) );
+    /* This sleep is required to make sure that the simulation is not stuck to just 1 process*/
+  }
+
+  /* Free the dynamic array that holds the host list*/
+  xbt_dynar_free(&hosts);
+
+  /* LAUNCH MSG SIMULATOR */
+  res = MSG_main();
+  
+  /* Log event at INFO priority */
+  DEBUGO("Simulation time %g\n", MSG_get_clock());
+
+  /* Clean up after Simulator */
+  MSG_clean();
+
+  DEBUGO("Pushes: %ld - Pulls: %ld\n", sim_pushes, sim_pulls);
+  DEBUGO("average time: %f\n",avg_trans/(sim_pushes+sim_pulls));
+  DEBUGO("Genome Pulls:\n");
+  std::map<long, long>::const_iterator it;
+  for (it= gene_pulls.begin(); it != gene_pulls.end(); ++it){
+    DEBUGO("Genome [%ld] = %ld pulls\n",it->first, it->second);
+  }
+  
+  /* Did the Simulator return properly - or was an error encountered. */
+  if (res != MSG_OK){
+    exit_fail((char*)__FILE__,__LINE__,6, (char*)"MSG SimGrid Failed to Run!");
+  }
+}
+
+std::vector<std::set<int> > locations; //where is the genome located
+pair<set<int>::iterator,bool> ret; //set return type
+
+int ssc_recv(int argc, char *argv[]){
+  /* get name of process -> returns current process -> convert to int */
+  int host_number = atoi(MSG_process_get_name(MSG_process_self()));
+
+  /* Mailbox is the talking point between agents*/
+  char mailbox[256];
+
+  /* set task to send to NULL (otherwise a previous task may partially reside*/
+  m_task_t task = NULL;
+  
+  /* Some unused variable MACRO in misc.h */
+  _XBT_GNUC_UNUSED int res;
+
+  task = NULL;
+  sprintf(mailbox,"%d", host_number);
+  res = MSG_task_receive(&(task), MSG_process_get_name(MSG_process_self()));
+  xbt_assert(res == MSG_OK, "MSG_task_get failed");
+  MSG_task_execute(task); // Run task
+  /* Get all the task data that was passed in */
+  task_info *tsk = ((task_info*)(MSG_task_get_data(task)));
+  long task_lab = tsk->get_label();
+  char pop[256];
+  /* Determine if this was a push or pull in the network*/ 
+  if (tsk->get_pop() == 1){ 
+    sprintf(pop,"%s","pull");
+    gene_pulls[task_lab]++; //increment the genome that was finished
+  } else {
+    sprintf(pop,"%s","push");
+    sim_pushes++;
+  }
+  /* Determine the total time the request was outstanding */
+  avg_trans += (MSG_get_clock() - tsk->get_start());
+
+  
+  UI tsk_in = tsk->get_UI();
+  long task_id = tsk->get_id()+1; // add the debug information to the string
+
+  //If we have a push comming through, add genome
+  if (tsk->get_pop() == 0){
+    locations[task_lab].insert(tsk->get_dest()); //add the destination to genome list
+    DEBUGE("%ld - %d\n",task_lab,*(locations[(int)task_lab].begin()));
+  } 
+  //If we have a pull request finishing, add the genome to the path of routers crossed
+  else {
+    int src = (tsk->get_src() - (nb_hosts/2)); //want the router version
+    int dest = tsk->get_dest();
+    next_hop *H = tsk->get_nh();
+    std::vector<int> visited;
+    //DEBUGE("SRC %d DEST %d\n", src,dest);
+    while ((int)(*H)[src][dest] != dest){
+      dest = (int)(*H)[src][dest];
+      visited.push_back(dest);
+    }
+    for (std::vector<int>::iterator i = visited.begin(); i != visited.end(); ++i){
+      ret = locations[task_lab].insert(*i); // Add each of the Routers
+      if (ret.second){
+        DEBUGE("Router %d added for Genome %ld\n",*i,task_lab);
+      }
+    }
+  }
+
+  Routes *R = tsk->get_route();
+  next_hop *H = tsk->get_nh();
+
+  XBT_INFO("FINISH %s of Genome #%ld -> ID: %ld",pop,task_lab,task_id);
+  MSG_task_destroy(task); //destory the task
+
+  //make sure only pushes execute this code
+  while (sim_pulls < tsk_in->get_pulls() && tsk->get_pop() == 0){ 
+    char* name_host;
+    xbt_dynar_t hosts = MSG_hosts_as_dynar(); 
+    //Destination field here will Have to change from cached router
+    proc_info *dat = new proc_info((nb_hosts/2)-1,300000.0,0,1);
+    dat->set_route(R); //used to find short latency
+    dat->set_nh(H); //used to find all routers Genome crosses
+    dat->set_UI(tsk_in);
+    dat->set_label(task_lab);
+    name_host = bprintf("%d",UniformD((nb_hosts/2),nb_hosts)); //pick any site
+    MSG_process_sleep(abs(Exponential(tsk_in->get_pullrate())));
+    MSG_process_create( name_host, ssc_send, dat, xbt_dynar_get_as(hosts,atoi(name_host),m_host_t) );
+
+    // ONLY SHOULD SPAWN PROCESS HERE, NEED TO CATCH ELSEWHERE
+
+    sim_pulls++;
+  }
+  return 0;
+}
+
+int ssc_send(int argc, char *argv[]){
+  /* get name of process -> returns current process -> convert to int */
+  int host_number = atoi(MSG_process_get_name(MSG_process_self()));
+
+  /* Mailbox is the talking point between agents*/
+  char mailbox[256];
+
+  /* set task to send to NULL (otherwise a previous task may partially reside*/
+  m_task_t task = NULL;
+  
+  /* Some unused variable MACRO in misc.h */
+  _XBT_GNUC_UNUSED int res;
+
+  /* Pull Requests will ENTER HERE */
+  //create debug string for debug 
+  char debug[256];
+  
+  //Get information passed in from the process to find destinantion, size, etc.
+  proc_info *dat  = (proc_info*)MSG_process_get_data(MSG_process_self());
+
+  //Set the comm size to that of what was passed in
+  task_comm_size = dat->get_size();
+
+  //convert host_number to a string for mailbox 
+  sprintf(mailbox,"%d",dat->get_recv());
+
+  //Update the time for which this process will be injected into network
+
+  char pop[256];
+  task_info *t;
+  
+  if ( dat->get_pop() == 0){ //push the data
+    global_time += abs(Exponential(dat->get_time())); //add to global time, sleep time
+    MSG_process_sleep(global_time); // camt go above MSG_task_create
+    t = new task_info(label++,0,(debug_id++)); // create a new task with label info
+    sprintf(pop,"%s","push");
+    XBT_INFO("START %s: Genome #%ld from %d to %d -> ID: %ld",
+              pop,t->get_label(),host_number,dat->get_recv(), debug_id);
+  } else { //pull the data
+    sprintf(pop,"%s","pull");
+
+    long ele = dat->get_label();
+
+    // For the element picked, find the nearest holder of the Genome.
+    int closest = 9;
+    int short_dist = 32000;
+
+    if (!locations[ele].empty()){ // if it isnt empty (shouldnt ever)
+      std::set<int>::iterator loc_i;
+      loc_i = locations[ele].begin();
+      //DEBUGE("SRC %d\n",host_number);
+      int src = host_number-(nb_hosts/2); //HOST CONVERSION TO SITE
+      Routes *R = dat->get_route();
+      /* Here we need to find the closest located Genome, so go through all
+         Genome locations, find the distance from source to location, store
+         only the closest genome location, use that for the pull request instead
+         of nb_hosts-1 (default value - is always contained in locations
+      */
+      while (loc_i != locations[ele].end()){ 
+        int dist = (*R)[src][(*loc_i)];
+        //DEBUGE("SRC %d DEST %d DIST %d \n",src,*loc_i,dist);
+        if (dist < short_dist){
+          short_dist = dist;
+          closest = *loc_i;
+        }
+        ++loc_i;
+      }
+    }
+
+    //Create the task for this pull
+    t = new task_info(ele,1,(debug_id++)); //create the task for pulling
+    
+    //Change the location from nb_hosts-1 to closest if applicable
+    dat->set_recv(closest);
+    sprintf(mailbox,"%d",dat->get_recv());
+    char* name_host = bprintf("%d",dat->get_recv());
+    xbt_dynar_t hosts = MSG_hosts_as_dynar(); 
+    //create process to catch this in the end. Had to be done dynamically, at
+    //time of process creation not clear where destination would be
+    MSG_process_create( name_host, ssc_recv, NULL, xbt_dynar_get_as(hosts,atoi(name_host),m_host_t) );
+
+    XBT_INFO("START %s: Genome #%ld from %d to %d -> ID: %ld",
+              pop,t->get_label(),dat->get_recv(),host_number,debug_id);
+  }
+  t->set_route(dat->get_route()); //set new route
+  t->set_nh(dat->get_nh()); //set new next_hop info
+  t->set_start(MSG_get_clock()); //set the start time for the process
+  t->set_UI(dat->get_UI()); //add UI information
+  t->set_src(host_number); //set new source
+  t->set_dest(dat->get_recv()); //set intended reciever
+
+  /* Ship off the task to simulator */
+  task = MSG_task_create(debug, task_comp_size, task_comm_size, t);
+  //MSG_task_set_category(task,"log");
+  MSG_task_send(task, mailbox);
+
+  return 0;
+}
+
+void single_server_cache(UI in, Routes *R, next_hop *H){
+  DEBUGE("In simGrid \n");
+  int res;
+  /* Initialie "some MSG" internal data */
+  /* int *argc, char **argv */
+  int num_args = 2;
+  char* arguments[2];
+  arguments[0] = (char*)"platform.xml"; /* Does something... */
+  /* This log line is a pain in the ass, without it, it will crash occasionally 
+   * The string is set up in a certain format such that parsing can be done.
+  */
+  arguments[1] = (char*)"--log=root.fmt:[%h:%P:(%i)%e%r]%e[%c/%p]%e%m%n";
+
+  MSG_global_init(&num_args, arguments); /* set up enviroment with platform.xml file*/
+  MSG_create_environment("platform.xml"); /* nb_hosts is set to a dynamic array set */
+  xbt_dynar_t hosts = MSG_hosts_as_dynar(); 
+  /* get the length of the dynamic array = # of hosts */
+  nb_hosts =  xbt_dynar_length(hosts); 
+  /* Let SimGrid know that hosts use the host function */
+  MSG_function_register("ssc_send", ssc_send);
+  MSG_function_register("ssc_recv", ssc_recv);
+  /* Log this event at INFO priority */
+  XBT_INFO("Number of host '%d'",nb_hosts);
+
+
+  for(long itor = 0; itor < in->get_objects(); itor++){
+    gene_pulls[itor] = 0;
+    std::set<int> s;
+    locations.push_back(s);
+  }
+  
+  char* name_host;  
+
+  //push these objects
+  for (int i=0; i< in->get_objects(); i++){
+    proc_info *dat = new proc_info((nb_hosts/2)-1,300000.0,in->get_pushrate(),0);
+    dat->set_UI(in);
+    dat->set_route(R); //used to find short latency
+    dat->set_nh(H); //used to find all routers Genome crosses
+    name_host = bprintf("%d",UniformD(0,(nb_hosts/2)));//,nb_hosts));
+    dat->set_send(atol(name_host));
+    MSG_process_create( name_host, ssc_send, dat, xbt_dynar_get_as(hosts,atoi(name_host),m_host_t) );
+    name_host = bprintf("%d",(nb_hosts/2)-1);
+    MSG_process_create( name_host, ssc_recv, NULL, xbt_dynar_get_as(hosts,(nb_hosts/2)-1,m_host_t) );
+  }
+
+  /* Free the dynamic array that holds the host list*/
+  xbt_dynar_free(&hosts);
+
+  /* LAUNCH MSG SIMULATOR */
+  res = MSG_main();
+  
+  /* Log event at INFO priority */
+  DEBUGO("Simulation time %g\n", MSG_get_clock());
+
+  /* Clean up after Simulator */
+  MSG_clean();
+
+
+  DEBUGO("Pushes: %ld - Pulls: %ld\n", sim_pushes, sim_pulls);
+  DEBUGO("average time: %f\n",avg_trans/(sim_pushes+sim_pulls));
+  DEBUGO("Genome Pulls:\n");
+  std::map<long, long>::const_iterator it;
+  for (it= gene_pulls.begin(); it != gene_pulls.end(); ++it){
+      DEBUGO("Genome [%ld] = %ld pulls\n",it->first, it->second);
+  }
+
+/* SOMETHING TO ADD - WHEN IT DOESNT SEG FOR NO REASON
+  DEBUGE("Genome Locations:\n");
+  std::vector<std::set<int> >::iterator itor;
+  int cnt = 0;
+
+  for (itor = locations.begin(); itor != locations.end(); ++itor){
+    DEBUGE("SIZE: %d\n",locations[5].size());
+    DEBUGE("Genome [%d] located @@ ", cnt);
+    std::set<int>::iterator itt;
+    for(itt = itor[cnt].begin(); itt != itor[cnt].end(); ++itt){
+      fprintf(stderr,"%d ",*itt);
+    }
+    fprintf(stderr,"\n");
+    cnt++;
+  }
+*/
+  
+  /* Did the Simulator return properly - or was an error encountered. */
+  if (res != MSG_OK){
+    exit_fail((char*)__FILE__,__LINE__,6, (char*)"MSG SimGrid Failed to Run!");
+  }
+}
+
+
+void sim(UI input, Policy P, Routes *R, next_hop *H){
+  DEBUGE("-------SIMULATION CORE--------\n");
+  /* Set up PSNG */
+  gsl_rng_env_setup();
+  r = gsl_rng_alloc(gsl_rng_mt19937);
+  gsl_rng_set(r, input->get_seed());
+  task_comm_size = input->get_size();
+  //TRACE_category_with_color("log","1 0 0");
+  switch(P->get_policy()){
+    case 0: // Undefined.
+      fprintf(stderr, "Data Policy was not set correctly, exiting\n");
+      exit(2);
+      break;
+    //SINGLE SERVER NO CACHE
+    case 1: // Single Server
+      DEBUGO("SINGLE SERVER NO CACHING ENABLED\n");
+      /********************* POLICY *****************/
+      //last node will be destination node. Read Single Server notes.
+      // We also subtract another 1 BECUASE OFF BY 1, VERTS START @@ 0 NOT 1
+      input->set_vertices(input->get_vertices()-2);  
+      //make sure that given this policy, more than 1 node
+      if (input->get_vertices() == 1){ 
+        fprintf(stderr, "Single Server Policy not usable in 1 vertex graph.\n");
+        exit(3);
+      }
+      /***************** END POLICY *****************/
+      
+      // This will allow the request generator naively choose sources
+      // While still allowing there to be a global destination.
+      single_server(input);
+      break;
+    //SINGLE SERVER CACHING
+    case 2:
+      DEBUGO("SINGLE SERVER CACHING ENABLED\n");
+      input->set_vertices(input->get_vertices()-2);  
+      //make sure that given this policy, more than 1 node
+      if (input->get_vertices() == 1){ 
+        fprintf(stderr, "Single Server Policy not usable in 1 vertex graph.\n");
+        exit(3);
+      }
+      single_server_cache(input, R, H);
+      break;
+    case 3:
+      break;
+    //....
+    default:
+      break;
+  }
+  gsl_rng_free(r);
+}
+@
+
+
+1.9
+log
+@9/25/12
+Cleaned up code - submittable
+@
+text
+@d9 2
+d33 1
+a33 3
+typedef std::map <edge_info, int> link_map; //mapping of edges to link values
+std::set<long> finished; //Genomes that have finished
+std::queue<m_process_t> s_procs; //suspended processes
+d89 1
+a89 1
+    M->insert( std::make_pair(prop,i) );
+d148 2
+a149 1
+          map<edge_info,int>::iterator link = M->find((*G)[e]);
+d195 2
+a196 1
+          map<edge_info,int>::iterator link = M->find((*G)[e]);
+d245 2
+a246 1
+          map<edge_info,int>::iterator link = M->find((*G)[e]);
+d293 2
+a294 1
+          map<edge_info,int>::iterator link = M->find((*G)[e]);
+a395 15
+  /* Here we are going to make sure we only do this once, when the finished
+   * array is empty.  Then we want to awaken all of the suspended process
+   * that were waiting for a push request to finish.  We will then modify
+   * For how long they should all sleep at some given rate. */
+  if (finished.empty()){
+    while (!s_procs.empty()){
+      m_process_t proc = s_procs.front();
+      proc_info *dat = (proc_info*)(MSG_process_get_data(proc));
+      start_time += abs(Exponential(dat->get_time()));
+      dat->set_time(start_time);
+      MSG_process_resume(proc);
+      s_procs.pop();
+    }
+  }
+  
+a396 1
+  finished.insert(task_lab); // Add the finished request to the finished list
+d411 1
+a416 1
+    /* This sleep is required to make sure that the simulation is not stuck to just 1 process*/
+a417 2
+    MSG_process_sleep(tsk_in->get_pullrate());
+    //MSG_process_sleep(100);
+a462 5
+    if (finished.size() == 0){ // IF NO PUSHES HAVE FINISHED
+      s_procs.push(MSG_process_self()); //add this process to the suspend array
+      MSG_process_suspend(MSG_process_self()); //suspend proc for later
+    }
+    MSG_process_sleep(dat->get_time()); // camt go above MSG_task_create
+d475 1
+d486 2
+a487 2
+  int num_args = 2;
+  char* arguments[2];
+d493 4
+d524 1
+a524 1
+    name_host = bprintf("%d",UniformD((nb_hosts/2),nb_hosts));
+a594 14
+  /* Here we are going to make sure we only do this once, when the finished
+   * array is empty.  Then we want to awaken all of the suspended process
+   * that were waiting for a push request to finish.  We will then modify
+   * For how long they should all sleep at some given rate. */
+  if (finished.empty()){
+    while (!s_procs.empty()){
+      m_process_t proc = s_procs.front();
+      proc_info *dat = (proc_info*)(MSG_process_get_data(proc));
+      start_time += abs(Exponential(dat->get_time()));
+      dat->set_time(start_time);
+      MSG_process_resume(proc);
+      s_procs.pop();
+    }
+  }
+a596 1
+  finished.insert(task_lab); // Add the finished request to the finished list
+d640 1
+a644 1
+    /* This sleep is required to make sure that the simulation is not stuck to just 1 process*/
+a645 1
+    MSG_process_sleep(tsk_in->get_pullrate());
+a689 6
+    if (finished.size() == 0){ // IF NO PUSHES HAVE FINISHED
+      s_procs.push(MSG_process_self()); //add this process to the suspend array
+      MSG_process_suspend(MSG_process_self()); //suspend proc for later
+    }
+    // Sleep process until its time in the simulation to be awakened
+    MSG_process_sleep(dat->get_time()); // camt go above MSG_task_create
+d743 1
+d788 1
+a788 1
+    name_host = bprintf("%d",UniformD((nb_hosts/2),nb_hosts));
+d847 1
+@
+
+
+1.8
+log
+@9/21/12
+Single Cache working?
+@
+text
+@d22 2
+a23 2
+typedef std::map <edge_info, int> link_map;
+
+d25 1
+d31 1
+a31 1
+std::map<int, char> num_to_char; //convert numbers to chars 0-a,1-b
+a110 1
+
+a112 10
+/*
+  for (int i = 0; i < (int)num_vertices(*G); i++){ 
+    *f << "\t\t<route src=\"s" << i;
+    *f << "\" dst=\"r" << i << "\">\n";
+    *f << "\t\t\t<link_ctn id=\"c" << i << "\"/>\n";
+    *f << "\t\t</route>\n";
+  }
+
+  *f << "\n";
+*/
+a358 2
+//XXX This is a Note that this section describtes Single Server w/ no Cache
+
+a371 3
+  //create debug string for debug 
+  //char debug[256];
+  
+a479 2
+      //DEBUGE("start: %f timesleep: %ld global: %f\n", 
+      //       start_time, dat->get_time(), global_time);
+a482 2
+    //TODO This is a problem, Genomes dont finish in order.
+    //long ele = UniformD(0,finished.size()); //pick an element from the avaliable
+a490 2
+  //t->set_route(dat->get_route());
+  //t->set_nh(dat->get_nh());
+d524 1
+a524 1
+
+d531 1
+a531 1
+  //push these objects
+a535 2
+    //dat->set_route(R);
+    //dat->set_nh(H);
+d564 1
+a564 3
+    //if (it->second != 0){
+      DEBUGO("Genome [%ld] = %ld pulls\n",it->first, it->second);
+    //}
+d573 2
+a574 3
+//XXX Note that this begins the Single Server Cache section
+std::vector<std::set<int> > locations;
+pair<set<int>::iterator,bool> ret;
+a588 3
+  //create debug string for debug 
+  //char debug[256];
+  
+d671 1
+a671 8
+
+    // TODO ONLY SHOULD SPAWN PROCESS HERE, NEED TO CATCH ELSEWHERE
+    // This code will not work because at the time of awaking suspended processes
+    // There is not sufficient knowledge to know where the closest Genome location is.
+    // One possiblity would be to STORE the processes IDs, and then manipulate the process
+    // At the time of awakening.
+    //name_host = bprintf("%d",(nb_hosts/2)-1);
+    //MSG_process_create( name_host, ssc_recv, NULL, xbt_dynar_get_as(hosts,(nb_hosts/2)-1,m_host_t) );
+a675 1
+    //MSG_process_sleep(100);
+d733 1
+a733 1
+    if (!locations[ele].empty()){
+d736 2
+a737 3
+      //int src = dat->get_send();
+      DEBUGE("SRC %d\n",host_number);
+      int src = host_number-(nb_hosts/2);
+d739 6
+a744 1
+      while (loc_i != locations[ele].end()){
+d746 1
+a746 1
+        DEBUGE("SRC %d DEST %d DIST %d \n",src,*loc_i,dist);
+d755 1
+a755 2
+    //TODO Search data structure for nearest location of genome
+
+d758 1
+a758 3
+
+    //TODO Set NEW destination for simulation
+    //convert host_number to a string for mailbox 
+d763 2
+d770 2
+a771 2
+  t->set_route(dat->get_route());
+  t->set_nh(dat->get_nh());
+d773 3
+a775 3
+  t->set_UI(dat->get_UI());
+  t->set_src(host_number);
+  t->set_dest(dat->get_recv());
+d851 1
+a851 1
+/*
+d880 2
+a881 1
+
+d922 1
+@
+
+
+1.7
+log
+@9/20/12
+@
+text
+@d437 1
+d499 5
+a503 1
+    long ele = UniformD(0,finished.size()); //pick an element from the avaliable
+d510 2
+a519 1
+
+d557 2
+d577 1
+a577 1
+  XBT_INFO("Simulation time %g", MSG_get_clock());
+d599 2
+d656 28
+d691 1
+d693 2
+d696 2
+a697 3
+
+    // TODO ONLY SHOULD SPAWN PROCESS HERE, NEED TO CATCH ELSEWHERE
+    name_host = bprintf("%d",UniformD((nb_hosts/2),nb_hosts));
+d701 1
+d706 2
+a707 2
+    name_host = bprintf("%d",(nb_hosts/2)-1);
+    MSG_process_create( name_host, ssc_recv, NULL, xbt_dynar_get_as(hosts,(nb_hosts/2)-1,m_host_t) );
+d761 1
+a762 1
+    long ele = UniformD(0,finished.size()); //pick an element from the avaliable
+d764 24
+a787 2
+    //long closest = (location[ele])[MSG_process_get_name(MSG_process_self())];
+    long closest;
+a788 2
+    // Pull from that location instead, need to send destination as well
+    // in data structure
+d792 2
+a793 3
+    // TODO Set NEW destination for simulation
+    //dat->set_recv(closest);
+    //MSG_process_create( name_host, ssc_recv, NULL, xbt_dynar_get_as(hosts,nb_hosts-1,m_host_t) );
+d795 5
+a799 1
+    //sprintf(mailbox,"%d",dat->get_recv());
+d804 2
+d808 2
+d818 1
+a818 1
+void single_server_cache(UI in){
+d845 2
+d855 2
+d858 1
+d871 1
+a871 1
+  XBT_INFO("Simulation time %g", MSG_get_clock());
+d876 1
+d884 17
+d909 1
+a909 1
+void sim(UI input, Policy P){
+d947 1
+a947 1
+      single_server_cache(input);
+@
+
+
+1.6
+log
+@*** empty log message ***
+@
+text
+@d35 1
+d57 1
+d60 9
+a68 1
+    *f << "\t\t<host id=\"h" << i << "\" power=\"1000000\"/>\n";
+a83 1
+    //*f << "\t\t<link id=\"l" <<  i << "\" bandwidth=\"10000"; // 10 GB
+d86 1
+a86 1
+    double lat = prop.weight * .0002;
+d92 6
+d103 20
+d141 1
+d143 2
+a144 2
+        *f << "\t\t<route src=\"h" << i;
+        *f << "\" dst=\"h" << j << "\">\n";
+d167 144
+a352 1
+
+d369 1
+d432 2
+a433 1
+    proc_info *dat = new proc_info(nb_hosts-1,300000.0,tsk_in->get_pullrate(),1);
+d435 2
+a436 1
+    name_host = bprintf("%d",UniformD(0,nb_hosts-1));
+d438 4
+a441 2
+    name_host = bprintf("%d",nb_hosts-1);
+    MSG_process_create( name_host, recv, NULL, xbt_dynar_get_as(hosts,nb_hosts-1,m_host_t) );
+d444 2
+a445 1
+    MSG_process_sleep(100);
+d537 1
+d548 2
+a549 1
+    proc_info *dat = new proc_info(nb_hosts-1,300000.0,in->get_pushrate(),0);
+d551 3
+a553 1
+    name_host = bprintf("%d",UniformD(0,nb_hosts-1));
+d555 5
+a559 2
+    name_host = bprintf("%d",nb_hosts-1);
+    MSG_process_create( name_host, recv, NULL, xbt_dynar_get_as(hosts,nb_hosts-1,m_host_t) );
+d579 230
+a808 1
+    DEBUGO("Genome [%ld] = %ld pulls\n",it->first, it->second);
+d829 1
+d831 1
+d847 1
+d849 9
+@
+
+
+1.5
+log
+@COMMENTED MORE
+@
+text
+@d1 1
+a1 1
+#include <stdio.h>
+d30 1
+a30 1
+std::map<int, char> num_to_char;
+d33 2
+a34 1
+std::map<long,long> gene_pulls;
+d190 2
+a191 1
+int sim_node(int argc, char *argv[]){
+d204 35
+a238 19
+  /* Pull Requests will ENTER HERE */
+  if (host_number == nb_hosts-1){
+    task = NULL;
+    sprintf(mailbox,"%d", host_number);
+    res = MSG_task_receive(&(task), MSG_process_get_name(MSG_process_self()));
+    xbt_assert(res == MSG_OK, "MSG_task_get failed");
+    MSG_task_execute(task); // Run task
+    /* Get all the task data that was passed in */
+    task_info *tsk = ((task_info*)(MSG_task_get_data(task)));
+    long task_lab = tsk->get_label();
+    char pop[256];
+    /* Determine if this was a push or pull in the network*/ 
+    if (tsk->get_pop() == 1){ 
+      sprintf(pop,"%s","pull");
+      sim_pulls++;
+      gene_pulls[task_lab]++; //increment the genome that was finished
+    } else {
+      sprintf(pop,"%s","push");
+      sim_pushes++;
+d240 28
+a267 2
+    /* Determine the total time the request was outstanding */
+    avg_trans += (MSG_get_clock() - tsk->get_start());
+d269 8
+a276 19
+    /* Here we are going to make sure we only do this once, when the finished
+     * array is empty.  Then we want to awaken all of the suspended process
+     * that were waiting for a push request to finish.  We will then modify
+     * For how long they should all sleep at some given rate. */
+    if (finished.empty()){
+      while (!s_procs.empty()){
+        m_process_t proc = s_procs.front();
+        proc_info *dat = (proc_info*)(MSG_process_get_data(proc));
+        start_time += abs(Exponential(dat->get_time()));
+        dat->set_time(start_time);
+        MSG_process_resume(proc);
+        s_procs.pop();
+      }
+    }
+   
+    finished.insert(task_lab); // Add the finished request to the finished list
+    long task_id = tsk->get_id()+1; // add the debug information to the string
+    XBT_INFO("FINISH %s of Genome #%ld -> ID: %d",pop,task_lab,task_id);
+    MSG_task_destroy(task); //destory the task
+d278 1
+d280 31
+a310 38
+  } else {
+    //create debug string for debug 
+    char debug[256];
+    
+    //Get information passed in from the process to find destinantion, size, etc.
+    proc_info *dat  = (proc_info*)MSG_process_get_data(MSG_process_self());
+
+    //convert host_number to a string for mailbox 
+    sprintf(mailbox,"%d",dat->get_recv());
+
+    //Set the comm size to that of what was passed in
+    task_comm_size = dat->get_size();
+
+    //Update the time for which this process will be injected into network
+
+    char pop[256];
+    task_info *t;
+    
+    if ( dat->get_pop() == 0){ //push the data
+      global_time += abs(Exponential(dat->get_time())); //add to global time, sleep time
+      MSG_process_sleep(global_time); // camt go above MSG_task_create
+      t = new task_info(label++,0,(debug_id++)); // create a new task with label info
+      sprintf(pop,"%s","push");
+      XBT_INFO("START %s: Genome #%ld from %d to %d -> ID: %d",
+                pop,t->get_label(),host_number,dat->get_recv(), debug_id);
+    } else { //pull the data
+      sprintf(pop,"%s","pull");
+      if (finished.size() == 0){ // IF NO PUSHES HAVE FINISHED
+        s_procs.push(MSG_process_self()); //add this process to the suspend array
+        MSG_process_suspend(MSG_process_self()); //suspend proc for later
+        //DEBUGE("start: %f timesleep: %ld global: %f\n", 
+        //       start_time, dat->get_time(), global_time);
+      }
+      MSG_process_sleep(dat->get_time()); // camt go above MSG_task_create
+      long ele = UniformD(0,finished.size()); //pick an element from the avaliable
+      t = new task_info(ele,1,(debug_id++)); //create the task for pulling
+      XBT_INFO("START %s: Genome #%ld from %d to %d -> ID: %d",
+                pop,t->get_label(),dat->get_recv(),host_number,debug_id);
+d312 8
+a319 1
+    t->set_start(MSG_get_clock()); //set the start time for the process
+d321 3
+a323 3
+    /* Ship off the task to simulator */
+    task = MSG_task_create(debug, task_comp_size, task_comm_size, t);
+    MSG_task_send(task, mailbox);
+a324 1
+  }
+d335 1
+a335 1
+  char* arguments[1];
+d337 5
+a341 1
+    DEBUGO("A\n");
+d348 2
+a349 1
+  MSG_function_register("sim_node", sim_node);
+a360 1
+  double push_del = in->get_pushrate();
+d362 1
+a362 1
+    proc_info *dat = new proc_info(nb_hosts-1,300000.0,push_del,0);
+d365 1
+a365 13
+    MSG_process_create( name_host, sim_node, dat, xbt_dynar_get_as(hosts,atoi(name_host),m_host_t) );
+
+    name_host = bprintf("%d",nb_hosts-1);
+    MSG_process_create( name_host, sim_node, NULL, xbt_dynar_get_as(hosts,nb_hosts-1,m_host_t) );
+  }
+
+  double pull_del = in->get_pullrate();
+  for (int i=0; i< in->get_pulls(); i++){
+    proc_info *dat = new proc_info(nb_hosts-1,300000.0,pull_del,1);
+    dat->set_UI(in);
+    name_host = bprintf("%d",UniformD(0,nb_hosts-1));
+    MSG_process_create( name_host, sim_node, dat, xbt_dynar_get_as(hosts,atoi(name_host),m_host_t) );
+
+d367 1
+a367 1
+    MSG_process_create( name_host, sim_node, NULL, xbt_dynar_get_as(hosts,nb_hosts-1,m_host_t) );
+@
+
+
+1.4
+log
+@8/30/12
+Allows more user input
+@
+text
+@d6 1
+d31 3
+a33 5
+
+/* Required to sort the map of edge_info structures ='( */
+bool operator<(const edge_info &lhs, const edge_info &rhs){
+    return lhs.weight < rhs.weight;
+}
+a171 19
+/*
+void write_procs(ofstream *d, int hosts){
+  for (int i= 0; i< hosts-1; i++){
+    *d << "\t\t<process host=\"" << i << "\" function=\"sender\">";
+    *d << "</process>\n";
+  }
+  *d << "\t\t<process host=\"9\" function=\"receiver\">";
+  *d << "</process>\n";
+}
+
+void write_deploy(Graph *G, next_hop *Hop){
+  ofstream dep;
+  dep.open("deployment.xml");
+  int hosts = boost::num_vertices(*G);
+  write_header(&dep,0);
+  write_procs(&dep, hosts);
+  write_closer(&dep,0);
+}
+*/
+d181 7
+a187 5
+long label = 0;
+double global_time = 0;
+long sim_pushes = 0;
+long sim_pulls = 0;
+std::set<long> finished;
+d202 1
+a202 2
+  //XBT_INFO("In sim_node");
+
+d208 2
+a209 1
+    MSG_task_execute(task);
+d213 1
+d216 2
+d220 1
+d222 2
+d225 19
+a243 2
+    finished.insert(task_lab);
+    XBT_INFO("FINISH %s of Genome #%ld at: %f",pop,task_lab,MSG_get_clock());
+d245 1
+a245 1
+    MSG_task_destroy(task);
+a246 4
+
+    //task_info *t = new task_info(label++,0);
+    //create a new task to keep track of the label associated
+
+a248 1
+    //sprintf(debug, "Genome #%ld",t->get_label());
+a252 5
+    float push_rate = (dat->get_UI())->get_pushrate(); //.3;
+    int push = Binomial(10,push_rate);
+    //DEBUGE("push is: %d\n", push);
+    //push = 1;
+
+a255 1
+
+a258 3
+    //create the COMPUTATIONAL task
+    //task = MSG_task_create(debug, task_comp_size, task_comm_size, t);
+
+a259 3
+    global_time += abs(Exponential(dat->get_time()));
+    MSG_process_sleep(global_time); // camt go above MSG_task_create
+    //XBT_INFO("Simulation time %g => Global Time: %f", MSG_get_clock(), global_time);
+d263 5
+a267 3
+    if (finished.empty() || (push >= push_rate*10)){
+
+      t = new task_info(label++,0);
+d269 3
+a271 4
+
+      sim_pushes++;
+
+    } else {
+d273 5
+a277 4
+      long ele = UniformD(0,finished.size());
+      // while the elment is not found is == end() -> not found
+      while( finished.find(ele) == finished.end() ){
+        ele = UniformD(0,finished.size());
+d279 5
+a283 3
+      t = new task_info(ele,1);
+
+      sim_pulls++;
+d285 1
+d287 1
+a287 1
+    XBT_INFO("START %s: Genome #%ld from %d to %d",pop,t->get_label(),host_number,dat->get_recv());
+a288 3
+
+    //XBT_INFO("Simulation time %g => Global Time: %f", MSG_get_clock(), global_time);
+
+a290 2
+    //MSG_process_create( mailbox, sim_node, NULL, xbt_dynar_get_as(MSG_hosts_as_dynar(),9,m_host_t) );
+
+d295 1
+d304 1
+d315 4
+d320 1
+a320 7
+  proc_info *dat = new proc_info(nb_hosts-1,300000.0,0,0);
+  dat->set_UI(in);
+  char* name_host = bprintf("%d",UniformD(0,nb_hosts-1));
+  MSG_process_create( name_host, sim_node, dat, xbt_dynar_get_as(hosts,0,m_host_t) );
+
+  name_host = bprintf("%d",nb_hosts-1);
+  MSG_process_create( name_host, sim_node, NULL, xbt_dynar_get_as(hosts,nb_hosts-1,m_host_t) );
+d322 2
+a323 1
+  double time_del = in->get_timedelta();
+d325 1
+a325 1
+    *dat = proc_info(nb_hosts-1,300000.0,time_del,0);
+d328 1
+a328 1
+    MSG_process_create( name_host, sim_node, dat, xbt_dynar_get_as(hosts,0,m_host_t) );
+d334 10
+a343 2
+  //free(name_host);
+  //free(dat);
+d358 6
+@
+
+
+1.3
+log
+@8/30/12
+Single Server may be working properly!?
+@
+text
+@d57 1
+d64 1
+a64 1
+void write_links(ofstream *f, Graph *G, link_map* M){
+d68 8
+a75 1
+    *f << "\t\t<link id=\"l" <<  i << "\" bandwidth=\"10000"; // 10 GB
+d138 1
+a138 1
+void write_platform(Graph *G, next_hop *Hop){
+d155 2
+d161 1
+a161 1
+  write_links(&plat, G, link_name);
+d173 1
+d191 1
+d222 1
+a222 1
+  if (host_number == 9){
+d255 1
+a255 1
+    DEBUGE("push is: %d\n", push);
+a309 1
+
+d326 1
+a326 1
+  proc_info *dat = new proc_info(9,300000.0,0,0);
+d331 2
+a332 2
+  name_host = bprintf("%d",9);
+  MSG_process_create( name_host, sim_node, NULL, xbt_dynar_get_as(hosts,9,m_host_t) );
+d335 2
+a336 2
+  for (int i=0; i< 5000; i++){
+    *dat = proc_info(9,300000.0,time_del,0);
+d341 2
+a342 2
+    name_host = bprintf("%d",9);
+    MSG_process_create( name_host, sim_node, NULL, xbt_dynar_get_as(hosts,9,m_host_t) );
+@
+
+
+1.2
+log
+@*** empty log message ***
+@
+text
+@d37 1
+a37 1
+void write_header(ofstream *f){
+d43 2
+a44 1
+  *f << "\t<AS  id=\"AS0\"  routing=\"Full\">\n\n";
+d48 3
+a50 2
+void write_closer(ofstream *f){
+  *f << "\t</AS>\n";
+d141 1
+a141 1
+  write_header(&plat);
+d160 19
+a178 1
+  write_closer(&plat);
+d191 2
+d215 1
+d224 1
+d226 1
+a226 1
+    XBT_INFO("%s of Genome #%ld Completion at: %f",pop,task_lab,MSG_get_clock());
+a229 1
+    XBT_INFO("Simulation time %g", MSG_get_clock());
+d231 1
+a231 1
+    task_info *t = new task_info();
+a232 11
+    if (finished.empty()){
+      t->set_label(label++);
+      t->set_pop(0); 
+    } else {
+      int ele = -1;
+      while( finished.find (ele) != finished.end() ){
+        ele = UniformD(0,nb_hosts-2);
+      }
+      t->set_label(ele);
+      t->set_pop(1);
+    }
+d236 1
+a236 1
+    sprintf(debug, "Genome #%ld",t->get_label());
+d241 5
+a248 1
+    XBT_INFO("Sending Genome #%ld from %d to %d",t->get_label(),host_number,dat->get_recv());
+d254 1
+a254 1
+    task = MSG_task_create(debug, task_comp_size, task_comm_size, t);
+d258 20
+a277 1
+    XBT_INFO("time is: %f",global_time);
+d279 7
+a285 2
+    //Set process to sleep in simulation, until it is time to run process.
+    MSG_process_sleep(global_time);
+a287 1
+    //MSG_task_execute(task);
+a313 7
+  //int dat_time = in->get_time();
+  //double dat_rate = in->get_rate(); 
+  
+  //long tot_pulls = in->get_pulls();
+  //long tot_objs = in->get_objs();
+
+
+d316 2
+a317 1
+  char* name_host = bprintf("%d",UniformD(0,nb_hosts-2));
+d324 1
+a324 1
+  for (int i=0; i< 9; i++){
+d326 2
+a327 1
+    name_host = bprintf("%d",UniformD(0,nb_hosts-2));
+a333 1
+
+d348 2
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a13 1
+
+a14 1
+
+d27 2
+d36 1
+a36 1
+
+d46 1
+d52 1
+a54 1
+    // 11 zeros
+a55 1
+    //num_to_char[i] << "\" power=\"1000000\"/>\n";
+d60 1
+a65 1
+    //num_to_char[i] << "\" bandwidth=\"10000"; // 10 GB
+d75 1
+d91 1
+d97 2
+a98 2
+        *f << "\t\t<route src=\"h" << i; //num_to_char[i];
+        *f << "\" dst=\"h" << j << "\">\n"; //num_to_char[j] << "\">\n";
+a102 2
+        //DEBUGE(" src: %d to dest: %d\n",i,j);
+
+a111 1
+          //DEBUGE("(%d,%d) ",boost::source(e,*G),boost::target(e,*G));
+a113 1
+          //num_to_char[link->second] << "\"/>";
+a115 2
+        //DEBUGE("\n");
+        
+a122 10
+
+void set_map(std::map<int,char> *A){
+  (*A)[0] = 'a'; (*A)[1] = 'b'; (*A)[2] = 'c'; (*A)[3] = 'd'; (*A)[4] = 'e'; 
+  (*A)[5] = 'f';
+  (*A)[6] = 'g'; (*A)[7] = 'h'; (*A)[8] = 'i'; (*A)[9] = 'j'; (*A)[10] = 'k';
+  (*A)[11] = 'l'; (*A)[12] = 'm'; (*A)[13] = 'n'; (*A)[14] = 'o'; (*A)[15] = 'p';
+  (*A)[16] = 'q'; (*A)[17] = 'r'; (*A)[18] = 's'; (*A)[19] = 't'; (*A)[20] = 'u';
+  (*A)[21] = 'v'; (*A)[22] = 'w'; (*A)[23] = 'x'; (*A)[24] = 'y'; (*A)[25] = 'z';
+}
+
+d129 1
+a129 3
+
+  set_map(&num_to_char);
+
+d131 1
+a160 17
+void write_deploy(Graph *G, next_hop *Hop){
+  ofstream dep;
+  link_map* link_name = new link_map();
+  int hosts = boost::num_vertices(*G);
+
+  dep.open("deployment.xml");
+
+  write_header(&dep);
+  
+  write_hosts(&dep, hosts);
+  write_routes(&dep, G, Hop, link_name);
+  
+  write_closer(&dep);
+
+}
+
+
+d167 5
+a171 1
+XBT_LOG_NEW_DEFAULT_CATEGORY(ring,"Messages specific for this msg example");
+d173 2
+a174 1
+int host(int argc, char *argv[]){
+d176 2
+d179 2
+d182 2
+d185 4
+a188 7
+  if (host_number == 0){ //master  send then receive
+    /* Start HERE */
+    /* Mailbox is the node id value! just takes an int, from array */
+    sprintf(mailbox, "%d", host_number+1);
+    task = MSG_task_create("Genome", task_comp_size, task_comm_size, NULL);
+    XBT_INFO("Host \"%d\" send '%s' to Host \"%s\"",host_number,task->name,mailbox);
+    MSG_task_send(task, mailbox);
+d190 1
+d193 11
+a203 1
+    XBT_INFO("Host \"%d\" received \"%s\"",host_number, MSG_task_get_name(task));
+d205 2
+a206 6
+  }
+  else{ //slave receive then send
+    /*After it has been started, Run this code */
+    res = MSG_task_receive(&(task), MSG_process_get_name(MSG_process_self()));
+    xbt_assert(res == MSG_OK, "MSG_task_get failed");
+    XBT_INFO("Host \"%d\" received \"%s\"",host_number, MSG_task_get_name(task));
+d208 5
+a212 2
+    if(host_number+1 == nb_hosts){
+      sprintf(mailbox, "0");
+d214 6
+a219 1
+      sprintf(mailbox, "%d", host_number+1);
+d221 26
+a246 1
+    XBT_INFO("Host \"%d\" send '%s' to Host \"%s\"",host_number,task->name,mailbox);
+d248 4
+d256 1
+a256 2
+
+void simGrid(){
+d258 1
+a258 2
+  int i,res;
+
+d264 4
+a267 10
+  arguments[0] = (char*)"platform.xml";
+  /* Does something... */
+  MSG_global_init(&num_args, arguments);
+
+  /* set up enviroment with platform.xml file*/
+  MSG_create_environment("platform.xml"); 
+  /* nb_hosts is set to a dynamic array set */
+
+  DEBUGE("Commented MSG_hosts... \n");
+  xbt_dynar_t hosts = MSG_hosts_as_dynar();
+d271 1
+a271 1
+  MSG_function_register("host", host);
+d274 24
+a297 12
+  /* For each host given in the platform file*/
+  for(i = 0 ; i<nb_hosts; i++){ //covert the host array to int mailbox
+    /* set the host name from nb_hosts as a char*  */
+    char* name_host = bprintf("%d",i);
+    /* Create a new m_process_t */
+
+    /*const char *name, xbt_main_func_t code, void *data, m_host_t host */
+    MSG_process_create( name_host, host, NULL, xbt_dynar_get_as(hosts,i,m_host_t) );
+    //MSG_process_create( name_host+1, host, NULL, xbt_dynar_get_as(hosts,i,m_host_t));
+    
+    /* Now that the process has been created, we can now free that memory*/
+    free(name_host);
+d299 5
+d319 37
+@

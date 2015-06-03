@@ -1,0 +1,183 @@
+head	1.6;
+access;
+symbols;
+locks
+	lthurlow:1.6; strict;
+comment	@// @;
+
+
+1.6
+date	2012.09.25.22.59.00;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.09.05.19.14.28;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.07.19.21.46.35;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.07.09.22.56.42;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.07.07.20.42.48;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.07.07.18.15.49;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@7/7/12
+graph info is the header file that contains all the information that will
+relate to boost graph library
+@
+
+
+1.6
+log
+@9/25/12
+Cleaned up code - submittable
+@
+text
+@#ifndef _BGL_GRAPH_INFO_HPP_
+#define _BGL_GRAPH_INFO_HPP_
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <iostream> //for ostream
+#include <boost/graph/graphviz.hpp> //for boost related
+
+/* Vert_Info is a data structure that is used to maintain information on 
+ * vertices in the graph for BGL
+ */
+typedef struct vert_info{
+  std::string name; //vertex label
+}vert_info;
+
+/* Same as vert_info, keeps track of data for edges in BGL */
+
+typedef struct edge_info{
+  int capacity; //capacity of the link
+  int weight; // weight for routing algorithms
+}edge_info;
+
+/* Required to sort the map of edge_info structures ='( */
+inline bool operator<(const edge_info &lhs, const edge_info &rhs){
+    return lhs.weight < rhs.weight;
+}
+
+
+typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, vert_info, edge_info> Graph;
+typedef boost::graph_traits<Graph>::edge_descriptor edge_desc;
+typedef boost::graph_traits<Graph>::edge_iterator edge_iter;
+typedef boost::graph_traits <Graph>::vertex_descriptor vertex_descriptor;
+typedef boost::property_map < Graph, boost::vertex_name_t >::type NameMap;
+//unsigned integer type for num verts in graph
+typedef boost::graph_traits<Graph>::vertices_size_type size_type;
+typedef boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
+
+/*  These two templates are required for printing out graph to dot format */
+template <class WeightMap,class CapacityMap> class edge_writer {
+  public:
+    edge_writer(WeightMap w, CapacityMap c) : wm(w),cm(c) {}
+    template <class Edge>
+    void operator()(std::ostream &out, const Edge& e) const {
+      out << "[label=\" W = " << wm[e] << "\\n C = " << cm[e] << "\"]";
+  }
+  private:
+    WeightMap wm;
+    CapacityMap cm;
+};
+
+template <class WeightMap, class CapacityMap>
+inline edge_writer<WeightMap,CapacityMap> 
+make_edge_writer(WeightMap w,CapacityMap c) {
+  return edge_writer<WeightMap,CapacityMap>(w,c);
+}
+
+#endif
+@
+
+
+1.5
+log
+@*** empty log message ***
+@
+text
+@d10 3
+d17 2
+a30 1
+
+@
+
+
+1.4
+log
+@7/19/12
+No major changes.
+..
+@
+text
+@d19 6
+@
+
+
+1.3
+log
+@*** empty log message ***
+@
+text
+@a21 1
+typedef boost::graph_traits<Graph>::vertex_descriptor vert_desc;
+d23 5
+@
+
+
+1.2
+log
+@Comments Added
+@
+text
+@d7 2
+a8 4
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/lexical_cast.hpp>
+
+using namespace boost;
+d12 1
+a12 1
+};
+d17 19
+d38 5
+a42 3
+typedef adjacency_list<listS, vecS, undirectedS, vert_info, edge_info> Graph;
+
+typedef graph_traits<Graph>::edge_descriptor edge_desc;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a20 6
+typedef struct edge_info_prop_tag {
+  typedef edge_property_tag kind;
+};
+
+typedef property<edge_info_prop_tag, edge_info> edge_prop;
+
+@

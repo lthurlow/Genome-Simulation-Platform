@@ -1,0 +1,309 @@
+head	1.6;
+access;
+symbols;
+locks
+	lthurlow:1.6; strict;
+comment	@// @;
+
+
+1.6
+date	2012.07.23.17.33.20;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.07.07.20.42.48;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.07.07.18.15.49;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.06.27.23.41.00;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.06.27.22.34.30;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@6/27/12
+3:30pm
+Generate Request is the function that will randomly generate
+requsets for our simulation.
+@
+
+
+1.6
+log
+@7/23/12
+This file is in the process of being phased out
+The conents can be found in the simulation.cc file
+Requests need to be streamed in, not generated before hand
+and passed in as a very large array
+@
+text
+@#include <stdio.h>
+#include <stdlib.h>
+#include <set>
+#include <map>
+#include <cmath>
+
+#include <boost/tuple/tuple.hpp>
+#include <gsl/gsl_rng.h>
+#include "types.hpp"
+#include "randvars2.hpp"
+
+/*
+ * What needs to be generated:
+ * Push Type | Src | Start time | Label
+ * At time of simulation, Label will need to be substituted for dest.
+ * Needs to remember what has been pushed (so it doesnt dupl)
+ *
+ * Pass in an array of pairs
+ * modify the array, and return.
+ * Should also take in a seed in the case for repeated experiements
+*/
+
+using namespace std;
+using namespace boost;
+
+//commented out b/c not sure if simulation will throw error
+//gsl_rng *r;
+
+void gen_request(Request t, Policy p, UI in){
+  /*  declare all needed variables to generate requests*/
+  int counter = 0;
+  long time = 0;
+  int seed = in->get_seed();
+  int nr = in->get_requests();
+  int verts = in->get_vertices();
+  float pr = in->get_pushrate();
+  double td = in->get_timedelta();
+
+  //appearently it needs to be the inverse for this binomial situation
+  pr = 1-pr;
+
+  /* Setting up the random number generator*/
+  gsl_rng_env_setup();
+  r = gsl_rng_alloc(gsl_rng_mt19937);
+  srand(seed);
+
+
+  /*
+   * Must enfore a Push before Pull policy by forcing the first
+   * Type to be a push, then use the binomial distrubtion for
+   * n-1 requests.
+   */
+    /***********************************/
+    t[0].set_type(0);
+    time = (long)abs(Exponential(td)); 
+    t[0].set_time(time);
+    t[0].set_source((rand() % verts));
+    t[0].set_label(0);
+    t[0].set_dest(-1);
+    /***********************************/
+
+  long label = 1; //global labels counting up
+  while(counter < nr){
+    int type = Binomial(1,pr);
+    int source = rand() % verts;
+    t[counter].set_type(type);
+    
+    if (type == 0){ //pushing a new object
+      t[counter].set_label(label++);
+    }
+    /* 
+     * This will eventually need to use some some distribution
+     * for the number of pulls per object.
+    */
+    else { //pulling a previous object
+      t[counter].set_label(rand() % label);
+    }
+
+    t[counter].set_source(source);
+    time += (long)abs(Exponential(td));
+    t[counter].set_time(time);
+    t[counter].set_dest(-1);
+
+    counter++;
+  }
+}
+@
+
+
+1.5
+log
+@Comments Added
+@
+text
+@d26 2
+a27 1
+gsl_rng *r;
+a37 11
+  /* Verify the policy is legitamate.*/
+  if (p->get_policy() == 0 || p->get_policy() > MAX_POLICIES){
+    fprintf(stderr, "Invalid Policy entered\n.");
+    exit(3);
+  }
+  else if (p->get_policy() == 1){
+    if (verts == 1){ //make sure that given this policy, more than 1 node
+      fprintf(stderr, "Single Server Policy not usable in 1 vertex graph.\n");
+      exit(3);
+    }
+  }
+d59 1
+d82 1
+@
+
+
+1.4
+log
+@7/7/12
+generate request now uses correct distributions for pushes, still need to model the pulls better
+@
+text
+@d28 2
+a29 1
+void gen_request(Request t, Policy p, UI in){//int seed, int nr, int verts, float dist){
+d37 1
+d43 1
+a43 2
+    verts -= 1;
+    if (verts == 0){
+d48 1
+d63 1
+d65 1
+a65 1
+    time = (long)abs(Exponential(td));
+a70 1
+  map< pair<int,int>, long > appeared;
+d80 4
+@
+
+
+1.3
+log
+@6/29/12
+Generate Request now models the number of requests after a binomial distribution
+It still maintains the policy of push before pull, and uses
+GNU scientfic Library (gsl.1.9) which is now installed.
+@
+text
+@d5 2
+d28 1
+a28 1
+void gen_request(Request t, Policy p, int seed, int nr, int verts, float dist){
+d31 5
+d48 1
+a48 1
+  dist = 1-dist;
+d61 6
+a66 5
+  t[0].set_type(0);
+  time += (rand() % 1000 +1);
+  t[0].set_time(time);
+  t[0].set_source((rand() % verts));
+  t[0].set_label(0);
+d71 1
+a71 1
+    int type = Binomial(1,dist);
+d82 2
+a83 1
+    time += (rand() % 1000 +1);
+a84 1
+    t[counter].set_source(source);
+@
+
+
+1.2
+log
+@6/27/12
+5pm
+Working version now with label
+uses map instead of a set
+@
+text
+@d5 2
+a6 2
+#include "boost/tuple/tuple.hpp"
+
+d8 1
+d12 2
+a13 1
+ * Push Type | Src | Dest | Start time
+d24 3
+a26 1
+void gen_request(request *t, int seed, int nr, int verts){
+d29 31
+a59 3
+  //need to change from set to map
+  // map pair of ints > single int label
+  //set< pair<int,int> > appeared;
+d61 1
+a61 2
+  srand(seed);
+  long label = 0; //global labels counting up
+d63 1
+a63 1
+    int type = 0;
+d65 7
+a71 4
+    int destination = rand() % verts;
+    /* For a small topology this will run longer */
+    while (destination == source){ // src != dest
+      destination = rand() % verts;
+a73 14
+    pair<int,int> element (source,destination);
+    map<pair<int,int>,long>::const_iterator it = appeared.find(element);
+    //const bool is_in = appeared.find(element) != appeared.end();
+    if (it != appeared.end()){ 
+      type = 1;
+      label = appeared.find(element)->second;
+    }
+    else {
+      label += 1;
+      //appeared.insert(element,label);
+      appeared[element] = label;
+      type = 0;
+    }
+    // if src dest == exist, type = pull, else push.
+a74 1
+    t[counter].set_type(type);
+d76 2
+a77 2
+    t[counter].set_src_dest(pair<int,int>(source,destination));
+    t[counter].set_label(label);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 1
+d25 4
+a28 1
+  set< pair<int,int> > appeared;
+d30 1
+d41 6
+a46 2
+    const bool is_in = appeared.find(element) != appeared.end();
+    if (is_in){ type = 1; }
+d48 3
+a50 1
+      appeared.insert(element);
+d58 1
+@

@@ -1,0 +1,122 @@
+head	1.3;
+access;
+symbols;
+locks
+	lthurlow:1.3; strict;
+comment	@// @;
+
+
+1.3
+date	2012.09.25.22.59.00;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.07.27.00.02.06;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@6/29/12
+randvars is another section of code that Brad wrote
+It is the section of code that ends up calling gsl, but in nicer shorter function calls
+@
+
+
+1.3
+log
+@9/25/12
+Commented code @@ top with info
+@
+text
+@#include <stdlib.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include "randvars2.hpp"
+
+/* randsvars2 cc and hpp are from Brad Smiths CAR simulations */
+/* They use GSL (Gnu Scientific Library) for random distribution functions*/
+
+double Exponential(const double a)
+{
+  return(gsl_ran_exponential(r,a));
+}
+
+unsigned int Geometric(const double p)
+{
+  return(gsl_ran_geometric(r,p));
+}
+
+unsigned int Binomial(const int    n,
+		      const double p )
+{
+  return(gsl_ran_binomial(r,p,n));
+}
+
+unsigned int Poisson(const double a)
+{
+  return(gsl_ran_poisson(r,a));
+}
+
+double Erlang(int    m,
+	      double a )
+{
+  return(gsl_ran_gamma(r,m,a));
+}
+
+double Gaussian(double m,
+		double s )
+{
+  return(m + gsl_ran_gaussian(r,s));
+}
+
+double Lognormal(double m,
+		 double s )
+{
+  return(gsl_ran_lognormal(r,m,s));
+}
+
+static double doubleRandom()
+{
+  return((double)gsl_rng_get(r)/(double)(gsl_rng_max(r)));
+}
+
+double UniformC(const double min,
+		const double max )
+{
+  return(min + (max - min) * doubleRandom());
+}
+
+unsigned int UniformD(const unsigned int min,
+		      const unsigned int max )
+{
+  return(min + gsl_rng_uniform_int(r,max-min));
+}
+@
+
+
+1.2
+log
+@7/26/12
+No change
+@
+text
+@d6 3
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a0 1
+#include "randvars2.hpp"
+d4 1
+@

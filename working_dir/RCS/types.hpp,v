@@ -1,0 +1,781 @@
+head	1.20;
+access;
+symbols;
+locks
+	lthurlow:1.20; strict;
+comment	@// @;
+
+
+1.20
+date	2012.09.25.22.59.00;	author lthurlow;	state Exp;
+branches;
+next	1.19;
+
+1.19
+date	2012.09.21.23.42.29;	author lthurlow;	state Exp;
+branches;
+next	1.18;
+
+1.18
+date	2012.09.21.17.51.54;	author lthurlow;	state Exp;
+branches;
+next	1.17;
+
+1.17
+date	2012.09.06.17.47.06;	author lthurlow;	state Exp;
+branches;
+next	1.16;
+
+1.16
+date	2012.09.05.19.14.28;	author lthurlow;	state Exp;
+branches;
+next	1.15;
+
+1.15
+date	2012.08.31.05.39.36;	author lthurlow;	state Exp;
+branches;
+next	1.14;
+
+1.14
+date	2012.08.27.23.49.49;	author lthurlow;	state Exp;
+branches;
+next	1.13;
+
+1.13
+date	2012.08.23.20.40.24;	author lthurlow;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2012.07.27.19.46.36;	author lthurlow;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2012.07.27.00.02.06;	author lthurlow;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2012.07.23.17.33.20;	author lthurlow;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2012.07.20.17.18.19;	author lthurlow;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2012.07.20.05.58.00;	author lthurlow;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2012.07.09.22.56.42;	author lthurlow;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2012.07.07.18.15.49;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.06.27.23.41.00;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.06.27.22.34.30;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.06.22.07.06.01;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.06.21.23.53.24;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@6-21-12
+5pm
+Header file for main.cc
+@
+
+
+1.20
+log
+@9/25/12
+Cleaned up code - submittable
+@
+text
+@#ifndef _TYPES_HPP_
+#define _TYPES_HPP_
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include "bgl_graph_info.hpp"
+#include "randvars2.hpp"
+#include "routing.hpp"
+
+/*comment out DEBUG define line to remove debug code!*/
+#define PRINT_DEBUG 1  //comment out this line to remove debug code
+
+#ifdef PRINT_DEBUG //defines debug
+#define DEBUGO(...)  fprintf(stdout, __VA_ARGS__)
+#define DEBUGE(...)  fprintf(stderr, __FILE__ ": " __VA_ARGS__)
+#else
+#define DEBUGO(...)
+#define DEBUGE(...)
+#endif
+
+#define MAX_POLICIES 2
+
+using std::pair;
+
+/*
+ * Policy implementations:
+ * 0 : Undefined - ERROR
+-> * 1 : Single Server
+-> * 2 : Single Server with Caching
+*************************************
+ * X : Multiple Servers
+ * X : Cache (copy full) as you go
+ * X : Cache (copy segment) as you go
+ * X : Cache (copy varying amounts) as you go
+ * X : Priority Pushing (Routing off link capacity)
+ * X : Pull while Pushing (forced to be <= push bottleneck rate)
+*/
+class policy{
+  private:
+    int type;
+    int amount; //not fully thought out, #5
+  public:
+    int  get_policy(){ return type; }
+    void set_policy(int t){ type = t; }
+};
+
+typedef policy* Policy;
+
+/*
+ * Class for passing around user's input to other functions
+*/
+class user_input{
+  private:
+    int     vertices;   // # of nodes in the graph
+    int     seed;       // Seed for PRNG
+    int     route;      // routing algorithm to use
+    long    num_pulls;  // MAX set of pulls allowed in simulation
+    long    num_objs;   // MAX set of objects allowed in simulation
+    long    min_cap;    // Minimum link capacity
+    long    max_cap;    // Maximum link capacity
+    long    obj_size;   // Size of the object
+    float   min_weight; //Minimum link weight (*.0002 for latency)
+    float   max_weight; //Maximum link weight
+    float   chance_of_edge; // Degree of graph
+    double  push_rate;  // EXP() for arrival rate for pushes
+    double  pull_rate;  // EXP() for arrival rate for pulls
+  public:
+    int    get_vertices(){ return vertices; }
+    int    get_seed(){ return seed; }
+    int    get_route(){ return route; }
+    long   get_pulls(){ return num_pulls; }
+    long   get_objects(){ return num_objs; }
+    long   get_mincap(){ return min_cap; }
+    long   get_maxcap(){ return max_cap; }
+    long   get_size(){ return obj_size; }
+    float  get_minw(){ return min_weight; }
+    float  get_maxw(){ return max_weight; }
+    float  get_edgechance(){ return chance_of_edge; }
+    double get_pushrate(){ return push_rate; }
+    double get_pullrate(){ return pull_rate; }
+
+    void   set_vertices(int v){ vertices = v; }
+    void   set_seed (int s){ seed = s; }
+    void   set_route(int r){ route = r; }
+    void   set_pulls(long p){ num_pulls = p; }
+    void   set_objects(long o){ num_objs = o; }
+    void   set_mincap(long mc){ min_cap = mc; }
+    void   set_maxcap(long mc){ max_cap = mc; }
+    void   set_size (long s){ obj_size = s; }
+    void   set_minw(float mw){ min_weight = mw; }
+    void   set_maxw(float mw){ max_weight = mw; }
+    void   set_edgechance(float coe){ chance_of_edge = coe; }
+    void   set_pushrate(double pr){ push_rate = pr; }
+    void   set_pullrate(double pr){ pull_rate = pr; }
+};
+
+typedef user_input* UI;
+
+//file_format.cc functions
+void gen_graph(UI in);
+Graph con_graph(UI in);
+
+//util functions
+void print_help(void);
+void print_input(UI in, Policy P);
+void print_graph(Graph G);
+
+/* Special Exit Output code */
+inline void exit_fail(char* file, int line, int status, char* err){
+  if (status != 0){
+    fprintf(stderr,"Recieved ERROR status: %d from %s at %d\n", status, file, line);
+    fprintf(stderr,"%s\n", err);
+  }
+  exit(status);
+}
+
+/* Special Exit Output code */
+inline void exit_fail(char* file, int line, int status){
+  if (status != 0){
+    fprintf(stderr,"Exit Status: %d from %s at %d\n", status, file, line);
+  }
+  exit(status);
+}
+
+
+#endif
+@
+
+
+1.19
+log
+@9/21/12
+moved headers
+@
+text
+@a9 1
+
+d25 1
+a25 1
+#define MAX_POLICIES 7
+d32 9
+a40 7
+ * 1 : Single Server
+ * 2 : Multiple Servers
+ * 3 : Cache (copy full) as you go
+ * 4 : Cache (copy segment) as you go
+ * 5 : Cache (copy varying amounts) as you go
+ * 6 : Priority Pushing (Routing off link capacity)
+ * 7 : Pull while Pushing (forced to be <= push bottleneck rate)
+d58 13
+a70 14
+    int    vertices;  // # of nodes in the graph
+    long   num_req;   // OUTDATED
+    long   num_pulls; // MAX set of pulls allowed in simulation
+    long   num_objs;  // MAX set of objects allowed in simulation
+    long   min_cap;
+    long   max_cap;
+    float  min_weight;
+    float  max_weight;
+    int    seed;      // Seed for PRNG
+    float  chance_of_edge; // Degree of graph
+    double  push_rate; // EXP() for arrival rate for pushes
+    double  pull_rate;
+    int    obj_size;  // Size of the object
+    long   time; // time to run - not yet implemented
+d72 3
+a74 1
+    long   get_requests(){ return num_req; }
+d79 3
+a81 2
+    long   get_minw(){ return min_weight; }
+    long   get_maxw(){ return max_weight; }
+a84 5
+    //double get_timedelta(){ return time_rate; }
+    int    get_size(){ return obj_size; }
+    int    get_time(){ return time; }
+    int    get_vertices(){ return vertices; }
+    int    get_seed(){ return seed; }
+d86 3
+a88 2
+
+    void   set_requests(long nr){ num_req = nr; }
+d91 5
+a98 10
+    //void   set_timedelta(double td){ time_rate = td; }
+    void   set_vertices(int v){ vertices = v; }
+    void   set_seed (int s){ seed = s; }
+    void   set_size (int s){ obj_size = s; }
+    void   set_time(int t){ time = t; }
+
+    void   set_minw(long mw){ min_weight = mw; }
+    void   set_maxw(long mw){ max_weight = mw; }
+    void   set_mincap(long mc){ min_cap = mc; }
+    void   set_maxcap(long mc){ max_cap = mc; }
+d103 1
+a103 29
+class request{
+  private:
+    int   type; //set by binomial
+    int   src; //set by generator
+    int   dest; //will be set in simulation
+    long  label; //psuedo random from set
+    long  time; //increasing exponential distribution
+    int   size; //Size of the object (in Gb)
+  public:
+    int     get_type()   const { return type;  } 
+    int     get_source() const { return src;   }
+    int     get_dest()   const { return dest;  }
+    int     get_size()   const { return size;  }
+    long    get_label()  const { return label; }
+    long    get_time()   const { return time;  }
+
+    void set_type(int in){type = in;}
+    void set_source(int s){src = s;}
+    void set_dest(int d){dest = d;}
+    void set_size(int s){size = s;}
+    void set_time(long t){time = t;}
+    void set_label(long l){label = l;}
+};
+    
+
+typedef request* Request;
+
+void gen_request(Request t, Policy P, UI in);
+
+a106 2
+
+
+d109 1
+a109 1
+void print_requests(request *t, int num_requests);
+a110 1
+void print_request(Request R);
+d112 1
+d121 1
+@
+
+
+1.18
+log
+@9/20/12
+@
+text
+@d13 1
+a163 2
+/* Blongs in simgrid.hpp but due to circular stuff I dont want to resolve, its here*/
+void sim(UI input, Policy P);
+@
+
+
+1.17
+log
+@*** empty log message ***
+@
+text
+@a67 1
+    //double time_rate; // Rate of incoming requests
+@
+
+
+1.16
+log
+@*** empty log message ***
+@
+text
+@d141 2
+d164 2
+@
+
+
+1.15
+log
+@8/30/12
+Allows more user input
+@
+text
+@d66 3
+a68 2
+    float  push_rate; // % of pushes to pulls
+    double time_rate; // Rate of incoming requests
+d80 3
+a82 2
+    float  get_pushrate(){ return push_rate; }
+    double get_timedelta(){ return time_rate; }
+d93 3
+a95 2
+    void   set_pushrate(float pr){ push_rate = pr; }
+    void   set_timedelta(double td){ time_rate = td; }
+d139 1
+a139 1
+Graph con_graph(int seed);
+@
+
+
+1.14
+log
+@*** empty log message ***
+@
+text
+@d60 4
+d66 1
+a66 1
+    float  push_rate; // OUTDATED
+d69 1
+a69 1
+    long   time;
+d74 4
+a77 2
+    int    get_vertices(){ return vertices; }
+    int    get_seed(){ return seed; }
+d83 3
+d96 6
+a101 1
+    void   get_time(int t){ time = t; }
+d145 4
+a148 4
+  fprintf(stdout,"Recieved ERROR status: %d from %s at %d\n", status, file, line);
+  fprintf(stdout,"%s\n", err);
+  fprintf(stderr,"Recieved ERROR status: %d from %s at %d\n", status, file, line);
+  fprintf(stderr,"%s\n", err);
+d153 3
+a155 2
+  fprintf(stdout,"Exit Status: %d from %s at %d\n", status, file, line);
+  fprintf(stderr,"Exit Status: %d from %s at %d\n", status, file, line);
+@
+
+
+1.13
+log
+@8/23/12
+@
+text
+@d65 1
+d76 1
+d87 1
+@
+
+
+1.12
+log
+@7/27/12
+Headers changed.
+@
+text
+@d18 2
+a19 1
+#define DEBUG(...)  fprintf(stderr, __FILE__ ":: DEBUG :: " __VA_ARGS__)
+d21 2
+a22 1
+#define DEBUG(...)
+a112 5
+//Required that functions return constants
+//Must have inline function, as defined in header
+inline bool operator<(const request &a, const request &b) {
+  return a.get_time() > b.get_time();
+}
+d127 7
+a133 1
+//void print_active(AR ar);
+d135 5
+a139 1
+//void build_forwarding_tables(Graph G, int i);
+@
+
+
+1.11
+log
+@7/26/12
+Circuilar headers are a pain.
+@
+text
+@a11 1
+//#include "simulation.hpp"
+d62 1
+d72 1
+d82 1
+@
+
+
+1.10
+log
+@7/23/12
+Modified label and requests to be long's based on the
+size/scale that we may want to achieve
+@
+text
+@d10 1
+d12 2
+d55 8
+a62 6
+    int    vertices;
+    long    num_req;
+    int    seed;
+    float  chance_of_edge;
+    float  push_rate;
+    double time_rate;
+d64 3
+a66 1
+    long    get_requests(){ return num_req; }
+d74 2
+d92 1
+d97 1
+d104 1
+d122 1
+d126 3
+a131 2
+typedef std::vector<std::vector<double> > route_table;
+typedef route_table Routes;
+@
+
+
+1.9
+log
+@7/20/12
+Changed Routes to be of type vect vect instead of array vect
+@
+text
+@d53 1
+a53 1
+    int    num_req;
+a57 1
+    //int   edges;
+d59 1
+a59 1
+    int    get_requests(){ return num_req; }
+d66 1
+a66 1
+    void   set_requests(int nr){ num_req = nr; }
+a71 2
+    //int    get_edges(){return edges; }
+    //void   set_edges(int e){ edges = e; }
+d78 5
+a82 5
+    int   type;
+    int   src;
+    //int   dest;
+    int  label;
+    long    time;
+d84 5
+a88 4
+    int     get_type(){return type;} 
+    int     get_label(){return label;}
+    int     get_source(){ return src; }
+    long    get_time(){return time;}
+d92 1
+d94 1
+a94 1
+    void set_label(int l){label = l;}
+d97 6
+@
+
+
+1.8
+log
+@*** empty log message ***
+@
+text
+@d111 2
+a112 2
+typedef std::vector<double > route_table;
+typedef route_table* Routes;
+@
+
+
+1.7
+log
+@..
+@
+text
+@d6 1
+d109 4
+a112 1
+void build_forwarding_tables(Graph G, int i);
+@
+
+
+1.6
+log
+@7/7/12
+Modified types and function declerations
+@
+text
+@d6 4
+d15 1
+a15 1
+#define DEBUG(...) fprintf(stderr, __VA_ARGS__)
+a89 1
+    //pair<int,int> get_src_dest(){ return pair<int,int>(src,dest); }
+a92 3
+    //void set_src_dest( pair<int,int> in){ 
+    // src = in.first; dest = in.second;
+    //}
+d102 1
+a102 1
+void con_graph(int seed);
+d106 3
+@
+
+
+1.5
+log
+@6/29/12
+Modified header for gen_req
+@
+text
+@d47 7
+a53 4
+    int   vertices;
+    int   edges;
+    float chance_of_edge;
+    int   num_req;
+d55 15
+a69 8
+    int   get_requests(){ return num_req; }
+    int   get_vertices(){ return vertices; }
+    float get_edgechance(){ return chance_of_edge; }
+    int   get_edges(){return edges; }
+    void  set_requests(int nr){ num_req = nr; }
+    void  set_edges(int e){ edges = e; }
+    void  set_edgechance(float coe){ chance_of_edge = coe; }
+    void  set_vertices(int v){ vertices = v; }
+d79 2
+a80 2
+    int   label;
+    long  time;
+d82 4
+a85 4
+    int  get_type(){return type;} 
+    int  get_label(){return label;}
+    int  get_source(){ return src; }
+    long get_time(){return time;}
+d99 1
+a99 1
+void gen_request(Request t, Policy P, int seed, int num_requests, int verts, float d);
+d101 2
+a102 2
+void gen_graph(user_input *i);
+void con_graph(void);
+@
+
+
+1.4
+log
+@6/27/12
+5pm
+Working version now with label
+uses map instead of a set
+@
+text
+@d16 2
+d20 44
+d66 5
+a70 5
+    int type;
+    int src;
+    int dest;
+    int label;
+    long time;
+d72 3
+a74 2
+    int get_type(){return type;} 
+    int get_label(){return label;}
+d76 1
+a76 1
+    pair<int,int> get_src_dest(){ return pair<int,int>(src,dest); }
+d79 5
+a83 4
+    void set_src_dest( pair<int,int> in){ 
+     src = in.first; dest = in.second;
+    }
+    void set_time(long in){time = in;}
+a85 1
+
+d89 1
+a89 3
+void print_help(void);
+
+void gen_request(request *t,int seed, int num_requests, int verts);
+d91 1
+a91 1
+void gen_graph(void);
+d94 1
+@
+
+
+1.3
+log
+@Updated for the new functional layout
+,
+@
+text
+@d23 1
+d26 8
+a33 7
+     int get_type(){return type;} //extern int request::
+     long get_time(){return time;} //extern long request::
+     pair<int,int> get_src_dest(){return pair<int,int>(src,dest);} 
+
+     void set_type(int in){type = in;}
+     void set_src_dest(pair<int,int>in){ 
+      src = in.first; dest = in.second;
+d35 2
+a36 1
+     void set_time(long in){time = in;} 
+@
+
+
+1.2
+log
+@..
+@
+text
+@d1 3
+d7 10
+a16 1
+using namespace std;
+d25 9
+a33 7
+    int get_type(void);
+    long get_time(void); 
+    pair<int,int> get_src_dest(void);
+
+    void set_type(int);
+    void set_src_dest(pair<int,int>);
+    void set_time(long); 
+a35 3
+int request::get_type(){return type;}
+long request::get_time(){return time;}
+pair<int,int> request::get_src_dest(){return pair<int,int>(src,dest);}
+a36 5
+void request::set_type(int in){type = in;}
+void request::set_src_dest(pair<int,int>in){ src = in.first; dest = in.second;}
+void request::set_time(long in){time = in;} 
+
+
+d41 1
+a41 1
+void gen_request(request *t);
+d44 3
+d48 1
+a48 1
+void print_requests(request *t);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d33 1
+a33 1
+void print_help();
+d37 2
+@

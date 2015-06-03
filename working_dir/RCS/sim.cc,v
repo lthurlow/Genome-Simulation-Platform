@@ -1,0 +1,417 @@
+head	1.1;
+access;
+symbols;
+locks
+	lthurlow:1.1; strict;
+comment	@// @;
+
+
+1.1
+date	2012.06.22.07.06.01;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sstream>
+#include <queue>
+
+#include <boost/config.hpp>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/graphviz.hpp>
+
+
+using namespace boost;
+using namespace std;
+
+/*
+ * Overall design of this code is weird, but allows for only one code file
+ * rather than using multiple scripts.
+ *
+*/
+
+/*
+ * Instead of Flows, they will be Requests.
+ * Requests will be made up of:
+   Source (where the Request is spawned)
+   Destination (where the Genome is stored)
+   Size (Size of the Genome Request)
+   Start Time (time Request is spawned)
+   End Time (calculated time when the Request was finished)
+ * ======================= (Currently Missing) =========================
+ * Genome Request #number, this may make other qualities irrelevant
+ * Follow up on this.
+*/
+
+class Request{
+  int src;
+  int dest;
+  int size;
+  int start;
+  int end;
+public:
+  Request(){
+    src = 0;
+    dest = 0;
+    size = 0;
+    start = 0;
+    end = 0;
+  }
+  Request(int sr, int de, int si, int st, int en){
+    src = sr;
+    dest = de;
+    size = si;
+    start = st;
+    end = en;
+  }
+
+  int getSrc() const{
+    return src;
+  }
+  
+  int getDest() const{
+    return dest;
+  }
+
+  int getSize() const{
+    return size;
+  }
+
+  int getStart() const{
+    return start;
+  }
+  
+  int getEnd()const{
+    return end;
+  }
+};
+
+//Defining Operaters (I stole from car.cc/readin.cc)
+bool operator<(const Request &a, const Request &b){
+  return a.getEnd() > b.getEnd();
+}
+
+//Pre-definitions
+void graph_setup(vector<int> V,vector<int> E);
+vector<int> getVertices(ifstream& file);
+vector<int> getEdges(ifstream& file);
+
+int main(int argc,char** argv){
+  int syscheck = 0; //return value for system calls
+  system("echo export MALLOC_CHECK_=0");
+  syscheck = system("export MALLOC_CHECK_=0"); //makes itm not crash
+  if (syscheck==1){
+    fprintf(stderr, "Export Command Failure!");
+    exit(1);
+  }
+
+  /* create a file to use for prefrences for gt-itm*/
+  ofstream pref;
+  pref.open("pref"); 
+  pref << "geo 1\n"; //when this take arguments, these will be variables
+  pref << "10 10 3 .2\n"; //same here, change via arguments
+  pref.close();
+
+  /* Run itm on pref file created above. */
+  system("echo ~/Genome/ns-allinone-2.35/gt-itm/bin/itm pref");  
+  syscheck = system("~/Genome/ns-allinone-2.35/gt-itm/bin/itm pref");  
+  if (syscheck==1){
+    fprintf(stderr, "itm not found or failed to run!");
+    exit(1);
+  }
+
+  /*convert gb file to readable alternate format*/
+  system("echo ~/Genome/ns-allinone-2.35/gt-itm/bin/sgb2alt pref-0.gb pref.alt");
+  syscheck = system("~/Genome/ns-allinone-2.35/gt-itm/bin/sgb2alt pref-0.gb pref.alt");
+  if (syscheck==1){
+    fprintf(stderr, "sgb2alt failed to run, not found, incompatable file!");
+    exit(1);
+  }
+
+  /* Run generate python script
+   * This script generates psuedo-random numbers for src-dest-size-start
+   * This will need to be changed if structure changes to add Request #
+  */
+
+  system("echo ./generate.py"); //will use arguments when implemented
+  system("./generate.py"); //will use arguments when implemented
+
+
+  /*
+   * Open the alternate file, to read file, and begin to intrupt file.
+  */
+
+  ifstream alt;
+  alt.open("pref.alt");
+  string line;
+  vector<int> verts;
+  vector<int> ed;
+  while(getline(alt,line) != NULL){
+    //fprintf(stderr, "debug: %s",line);
+    size_t pos;
+    pos = line.find("VERTICES"); // find vertices, copy vertices.
+    if (pos != std::string::npos){  
+      verts = getVertices(alt);
+    }
+    pos = line.find("EDGES"); // find edges, copy edges
+    if (pos != std::string::npos){  
+      fprintf(stderr, "edges\n");
+      ed = getEdges(alt);
+    }
+  }
+  alt.close(); //close file
+
+  int num_edge = ed.size();
+
+  /*
+   * Making boost::graph attributes
+   * Here making typedef for adjacency_lists
+  */
+  typedef adjacency_list_traits<listS, listS, 
+    directedS>::vertex_descriptor vertex_descriptor;
+  typedef adjacency_list < listS, listS, undirectedS,
+    property<vertex_index_t, int, 
+    property<vertex_name_t, int,
+    property<vertex_distance_t, int,
+    property<vertex_predecessor_t, vertex_descriptor> > > >, 
+    property<edge_weight_t, int> > graph_t;
+  typedef graph_traits<graph_t>::edge_descriptor edge_descriptor;
+  typedef std::pair<int, int> Edge;
+
+  const int num_edges = num_edge;
+  Edge edge_array[num_edges];
+  int weights[num_edges];
+
+  int size = 0;
+
+  /*
+   * Based on how I copied Edges to the vector it is in this format:
+   * x-y distance. Copy x, move pointer, copy y, move pointer, copy dist
+   * next iteration.
+  */
+  vector<int>::iterator itora;
+  for(itora = ed.begin(); itora != ed.end(); ++itora){
+    int u = *itora;
+    ++itora;
+    int v = *itora;
+    ++itora;
+
+    weights[size] = *itora;
+    edge_array[size] = Edge(u,v);
+
+    size++;
+  }
+  
+  /*
+   * This section is the most uncomfortable for me to explain what is
+   * exactly happening.  This is all the boost::graph set-up
+  */
+
+  graph_traits<graph_t>::vertex_iterator i, iend;
+  #if defined(BOOST_MSVC) && BOOST_MSVC <= 1300
+  graph_t g(verts.size());
+  property_map<graph_t, edge_weight_t>::type weightmap = 
+    get(edge_weight, g);
+
+  std::vector<vertex_descriptor> msvc_vertices;
+  for (boost::tie(i, iend) = vertices(g); i != iend; ++i){
+    msvc_vertices.push_back(*i);
+  }
+
+  for (std::size_t j = 0; j < num_edges; ++j) {
+    edge_descriptor e; bool inserted;
+    boost::tie(e, inserted) = add_edge(msvc_vertices[edge_array[j].first], 
+                                       msvc_vertices[edge_array[j].second],
+                                       g);
+    weightmap[e] = weights[j];
+  }
+
+  #else
+  graph_t g(edge_array, edge_array + size, weights, verts.size());
+  property_map<graph_t, edge_weight_t>::type weightmap = 
+    get(edge_weight, g);
+  #endif
+
+  // Manually intialize the vertex index and name maps
+  property_map<graph_t, vertex_index_t>::type indexmap = 
+    get(vertex_index, g);
+  property_map<graph_t, vertex_name_t>::type name = get(vertex_name, g);
+
+  int c = 0;
+  graph_traits<graph_t>::vertex_iterator xi, xiend;
+  for (boost::tie(xi, xiend) = vertices(g); xi != xiend; ++xi) {
+    indexmap[*xi] = c;
+    name[*xi] = c;
+    c++;
+  }
+
+  //problem with distances....
+  vertex_descriptor s = vertex(0, g);
+
+
+  property_map<graph_t, vertex_distance_t>::type
+    d = get(vertex_distance, g);
+  property_map<graph_t, vertex_predecessor_t>::type
+    p = get(vertex_predecessor, g);
+  #if defined(BOOST_MSVC) && BOOST_MSVC <= 1300
+
+  // VC++ has trouble with the named parameters mechanism
+  property_map<graph_t, vertex_index_t>::type indexmap = 
+    get(vertex_index, g);
+  dijkstra_shortest_paths(g, s, p, d, weightmap, indexmap, 
+                          std::less<int>(), closed_plus<int>(), 
+                          (std::numeric_limits<int>::max)(), 0,
+                          default_dijkstra_visitor());
+  #else
+  dijkstra_shortest_paths(g, s, predecessor_map(p).distance_map(d));
+  #endif
+
+  /*This is the simulation section, using the queue system as before*/
+
+  priority_queue<Request> endQueue;
+
+  ifstream input;
+  input.open("request.in");
+  string lines;
+  while(getline(input,lines)){
+    istringstream stream(lines);
+    string w,x,y,z;
+    int ww,xx,yy,zz;
+    if(line[0] != '\n'){
+      stream >> w;
+      stream >> x;
+      stream >> y;
+      stream >> z;
+      ww = atoi(w.c_str());
+      xx = atoi(x.c_str());
+      yy = atoi(y.c_str());
+      zz = atoi(z.c_str());
+    }
+    endQueue.push(Request(ww,xx,yy,zz,0));
+    //fprintf(stderr,"copying %d : %d : %d : %d\n",ww,xx,yy,zz);
+  }
+  
+  //final section which is just proof part to output to file run time
+  //and execution time.
+  while (!endQueue.empty()){
+    Request tmp = endQueue.top();
+    
+    fprintf(stderr, "Source: %d ", tmp.getSrc());
+    fprintf(stderr, " Destination: %d ", tmp.getDest());
+    fprintf(stderr, " Size: %d ", tmp.getSize());
+    fprintf(stderr, " Start: %d ", tmp.getStart());
+    fprintf(stderr, " End: %d ", tmp.getEnd());
+    fprintf(stderr, "\n");
+    
+    endQueue.pop();
+  }
+
+  //debug information
+  /*
+  std::cout << "distances and parents:" << std::endl;
+  graph_traits < graph_t >::vertex_iterator vi, vend;
+
+  for (boost::tie(vi, vend) = vertices(g); vi != vend; ++vi) {
+    std::cout << "distance(" << name[*vi] << ") = " << d[*vi] << ", ";
+    std::cout << "parent(" << name[*vi] << ") = " << name[p[*vi]] << std::
+      endl;
+  }
+  std::cout << std::endl;
+
+  std::ofstream dot_file("sim.dot");
+  dot_file << "digraph D {\n"
+    << "  rankdir=LR\n"
+    << "  size=\"4,3\"\n"
+    << "  ratio=\"fill\"\n"
+    << "  edge[style=\"bold\"]\n" << "  node[shape=\"circle\"]\n";
+
+  graph_traits < graph_t >::edge_iterator ei, ei_end;
+
+  for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei) {
+    graph_traits < graph_t >::edge_descriptor e = *ei;
+    graph_traits < graph_t >::vertex_descriptor
+      u = source(e, g), v = target(e, g);
+    dot_file << name[u] << " -> " << name[v]
+      << "[label=\"" << get(weightmap, e) << "\"";
+    if (p[v] == u)
+      dot_file << ", color=\"black\"";
+    else
+      dot_file << ", color=\"grey\"";
+    dot_file << "]";
+  }
+  dot_file << "}";
+  */
+
+  return 0;
+}
+
+vector<int> getVertices(ifstream& file){
+  string line;  
+  vector<int> verts;
+  bool done = false;
+  while((getline(file,line) != NULL) && !done){
+    cout << "debug " << line << "\n";
+    //fprintf(stderr, "debug: %i",line);
+    istringstream stream(line);
+    string a;
+    int aa;
+    if (line.compare("\n") == 0){
+      done = true;
+      return verts;
+    } else {
+      stream >> a;
+      stream >> a;
+      stream >> a; //int i = line[2] - '0';
+      aa = atoi(a.c_str());
+      //fprintf(stderr, "copyied: %d\n\n",aa);
+      verts.push_back(aa);
+    }
+  }
+  return verts;
+}
+
+vector<int> getEdges(ifstream& file){
+  string line;
+  vector<int> edge;
+  bool done = false;
+  string x,y,z,t;
+  int xx,yy,zz;
+  while ((getline(file, line) != NULL) && !done){
+    //cout << "debug " << line << "\n";
+    if (line.length() == 0){
+      done = true;
+    } else {
+      istringstream stream(line);
+      stream >> x;
+      stream >> t;
+      stream >> y;
+      stream >> t;
+      stream >> z;
+      xx = atoi(x.c_str());
+      yy = atoi(x.c_str());
+      zz = atoi(z.c_str());
+      edge.push_back(xx); //node 1
+      edge.push_back(yy); //node 2
+      edge.push_back(zz); //distance
+      //fprintf(stderr, "copying: %d:%d:%d\n\n",xx,yy,zz);
+    }
+  }
+  return edge;
+}
+@

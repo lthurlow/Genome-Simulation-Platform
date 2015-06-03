@@ -1,0 +1,177 @@
+head	1.1;
+access;
+symbols;
+locks
+	lthurlow:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@6/29/12
+not used. will be deleted.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#include "randvars2.h"
+#include <stdio.h>
+#include <gsl/gsl_rng.h>
+
+void Usage(char *prog)
+{
+  fprintf(stderr, "Usage: %s <experiment count> [-s <seed>]\n", prog);
+  fprintf(stderr, "\t[Binomial:\t-B <cnt> <int n> <float p>]\n");
+  fprintf(stderr, "\t[Exponential:\t-e <cnt> <float a>]\n");
+  fprintf(stderr, "\t[Geometric:\t-G <cnt> <float p>]\n");
+  fprintf(stderr, "\t[Gaussian:\t-g <cnt> <float mean> <float stddev>]\n");
+  fprintf(stderr, "\t[Lognormal:\t-l <cnt> <float mean> <float stddev>]\n");
+  fprintf(stderr, "\t[Poisson:\t-P <cnt> <float a>]\n");
+  fprintf(stderr, "\t[Disc. Uniform:\t-U <cnt> <int min> <int max>]\n");
+  fprintf(stderr, "\t[Cont. Uniform:\t-u <cnt> <float min> <float max>]\n");
+  exit(1);
+}
+
+gsl_rng *r;
+
+int main(int argc, char *argv[])
+{
+  int		i, j;
+  int		firstParm = 2;
+  int		expCnt;
+  int		cnt;
+  int		p1, p2;
+  float		d1, d2;
+  unsigned long	seed;
+
+  if (argc <= 4)
+    Usage(argv[0]);
+
+  if (!sscanf(argv[1], "%d", &expCnt))
+    Usage(argv[0]);
+
+  gsl_rng_env_setup();
+
+  // printf ("generator type: %s\n", gsl_rng_name (r));
+  // printf ("seed = %lu\n", gsl_rng_default_seed);
+
+  // gsl_rng_default is set by GSL_RNG_TYPE env var;
+  // default = gsl_rng_mt19937. mt19937 chosen because it has range
+  // [0,2^31-1] which allows using gsl_rng_get() directly.
+  r = gsl_rng_alloc(gsl_rng_mt19937);
+
+  if ((argc > 1) && (argv[2][0] == '-') && (argv[2][1] == 's'))
+  {
+    sscanf(argv[3], "%lu", &seed);
+    gsl_rng_set(r,seed);
+    //gsl_rng_default_seed = seed; // Also set by GSL_RNG_SEED env variable.
+    firstParm = 4;
+  }
+
+  for (j = 0; j < expCnt; j++)
+  {
+    for (i = firstParm; i < argc; i++)
+    {
+      switch (argv[i][1])
+      {
+	case 'B': // -B <cnt> <n> <p>
+	  if (argc < i+4) Usage(argv[0]);
+	  sscanf(argv[++i], "%d", &cnt);
+	  sscanf(argv[++i], "%d", &p1);
+	  sscanf(argv[++i], "%f", &d1);
+	  for (; cnt > 1; cnt--)
+	    printf("%u ", Binomial(p1, d1));
+	  printf("%u", Binomial(p1, d1));
+	  break;
+	case 'e': // -e <cnt> <a>
+	  if (argc < i+3) Usage(argv[0]);
+	  sscanf(argv[++i], "%d", &cnt);
+	  sscanf(argv[++i], "%f", &d1);
+	  for (; cnt > 1; cnt--)
+	    printf("%lf ", Exponential(d1));
+	  printf("%lf", Exponential(d1));
+	  break;
+	case 'G': // -G <cnt> <p>
+	  if (argc < i+3) Usage(argv[0]);
+	  sscanf(argv[++i], "%d", &cnt);
+	  sscanf(argv[++i], "%f", &d1);
+	  for (; cnt > 1; cnt--)
+	    printf("%u ", Geometric(d1));
+	  printf("%u", Geometric(d1));
+	  break;
+	case 'g': // -g <cnt> <mean> <stddev>
+	  if (argc < i+4) Usage(argv[0]);
+	  sscanf(argv[++i], "%d", &cnt);
+	  sscanf(argv[++i], "%f", &d1);
+	  sscanf(argv[++i], "%f", &d2);
+	  for (; cnt > 1; cnt--)
+	    printf("%lf ", Gaussian(d1, d2));
+	  printf("%lf", Gaussian(d1, d2));
+	  break;
+	case 'l': // -l <cnt> <mean> <stddev>
+	  if (argc < i+4) Usage(argv[0]);
+	  sscanf(argv[++i], "%d", &cnt);
+	  sscanf(argv[++i], "%f", &d1);
+	  sscanf(argv[++i], "%f", &d2);
+	  for (; cnt > 1; cnt--)
+	    printf("%lf ", Lognormal(d1, d2));
+	  printf("%lf", Lognormal(d1, d2));
+	  break;
+	case 'P': // -P <cnt> <a>
+	  if (argc < i+3) Usage(argv[0]);
+	  sscanf(argv[++i], "%d", &cnt);
+	  sscanf(argv[++i], "%f", &d1);
+	  for (; cnt > 1; cnt--)
+	    printf("%u ", Poisson(d1));
+	  printf("%u", Poisson(d1));
+	  break;
+	case 'U': // -U <cnt> <min> <max>
+	  if (argc < i+4) Usage(argv[0]);
+	  sscanf(argv[++i], "%d", &cnt);
+	  sscanf(argv[++i], "%d", &p1);
+	  sscanf(argv[++i], "%d", &p2);
+	  if (p2 <= p1)
+	  {
+	    fprintf(stderr,
+		    "Error: min !< max for discrete Uniform distribution.\n");
+	    Usage(argv[0]);
+	  }
+	  for (; cnt > 1; cnt--)
+	    printf("%u ", UniformD(p1, p2));
+	  printf("%u", UniformD(p1, p2));
+	  break;
+	case 'u': // -u <cnt> <min> <max>
+	  if (argc < i+4) Usage(argv[0]);
+	  sscanf(argv[++i], "%d", &cnt);
+	  sscanf(argv[++i], "%f", &d1);
+	  sscanf(argv[++i], "%f", &d2);
+	  if (d2 <= d1)
+	  {
+	    fprintf(stderr,
+		    "Error: min !< max for discrete Uniform distribution.\n");
+	    Usage(argv[0]);
+	  }
+	  for (; cnt > 1; cnt--)
+	    printf("%lf ", UniformC(d1, d2));
+	  printf("%lf", UniformC(d1, d2));
+	  break;
+	default:
+	  Usage(argv[0]);
+      }
+      if (i < argc-1) printf(" ");
+    }
+    printf("\n");
+  }
+
+  gsl_rng_free(r);
+}
+@

@@ -1,0 +1,291 @@
+head	1.1;
+access;
+symbols;
+locks
+	lthurlow:1.1; strict;
+comment	@# @;
+
+
+1.1
+date	2012.09.21.17.51.54;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@9/20/12
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@main.cc: verts: 10, in verts: 10
+Exporting MALLOC_CHECK_=0
+file_format.cc: verts: 10 : edge: 0.555556
+Calling ../bin/itm pref
+Calling ../bin/sgb2alt pref-0.gb pref.alt
+Converting dot file to pdf format -- RUN WAS A:  SUCCESS!
+routing.cc: Building Tables
+util.cc: Edge: 0 - 9 :: Weight: 99 , Capacity: 1250
+util.cc: Edge: 0 - 5 :: Weight: 24 , Capacity: 1250
+util.cc: Edge: 0 - 2 :: Weight: 35 , Capacity: 1250
+util.cc: Edge: 0 - 1 :: Weight: 95 , Capacity: 1250
+util.cc: Edge: 1 - 9 :: Weight: 30 , Capacity: 1250
+util.cc: Edge: 1 - 8 :: Weight: 53 , Capacity: 1250
+util.cc: Edge: 1 - 7 :: Weight: 96 , Capacity: 1250
+util.cc: Edge: 1 - 6 :: Weight: 76 , Capacity: 1250
+util.cc: Edge: 1 - 4 :: Weight: 58 , Capacity: 1250
+util.cc: Edge: 1 - 2 :: Weight: 76 , Capacity: 1250
+util.cc: Edge: 2 - 8 :: Weight: 78 , Capacity: 1250
+util.cc: Edge: 2 - 3 :: Weight: 69 , Capacity: 1250
+util.cc: Edge: 3 - 9 :: Weight: 38 , Capacity: 1250
+util.cc: Edge: 4 - 9 :: Weight: 82 , Capacity: 1250
+util.cc: Edge: 5 - 9 :: Weight: 56 , Capacity: 1250
+util.cc: Edge: 5 - 7 :: Weight: 25 , Capacity: 1250
+util.cc: Edge: 6 - 8 :: Weight: 52 , Capacity: 1250
+util.cc: Edge: 6 - 7 :: Weight: 45 , Capacity: 1250
+main.cc: Before SIMGRID
+simgrid.cc: -------SIMULATION CORE--------
+simgrid.cc: In simGrid 
+[::(0) 0.000000] [CLOUD/INFO] Number of host '20'
+[::(0) 0.000000] [CLOUD/INFO] Reciever 9
+SINGLE SERVER NO CACHING ENABLED
+[s9:19:(1) 5.490216] [CLOUD/INFO] START push: Genome #0 from 19 to 9 -> ID: 1
+[s1:11:(3) 13.841882] [CLOUD/INFO] START push: Genome #1 from 11 to 9 -> ID: 2
+[s2:12:(5) 36.905092] [CLOUD/INFO] START push: Genome #2 from 12 to 9 -> ID: 3
+[s9:19:(7) 41.258190] [CLOUD/INFO] START push: Genome #3 from 19 to 9 -> ID: 4
+[s2:12:(9) 54.349334] [CLOUD/INFO] START push: Genome #4 from 12 to 9 -> ID: 5
+[s4:14:(11) 89.957130] [CLOUD/INFO] START push: Genome #5 from 14 to 9 -> ID: 6
+[s9:19:(13) 104.823648] [CLOUD/INFO] START push: Genome #6 from 19 to 9 -> ID: 7
+[s7:17:(15) 123.537503] [CLOUD/INFO] START push: Genome #7 from 17 to 9 -> ID: 8
+[s5:15:(17) 153.669021] [CLOUD/INFO] START push: Genome #8 from 15 to 9 -> ID: 9
+[s7:17:(19) 184.580408] [CLOUD/INFO] START push: Genome #9 from 17 to 9 -> ID: 10
+[r9:9:(12) 350.003339] [CLOUD/INFO] FINISH push of Genome #5 -> ID: 6
+[s0:10:(21) 350.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 10 -> ID: 11
+[s1:11:(23) 380.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 11 -> ID: 12
+[s5:15:(25) 410.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 15 -> ID: 13
+[s6:16:(27) 440.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 16 -> ID: 14
+[s5:15:(29) 470.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 15 -> ID: 15
+[s2:12:(31) 500.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 12 -> ID: 16
+[s0:10:(33) 530.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 10 -> ID: 17
+[s7:17:(35) 560.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 17 -> ID: 18
+[s7:17:(37) 590.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 17 -> ID: 19
+[s6:16:(39) 620.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 16 -> ID: 20
+[s1:11:(41) 650.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 11 -> ID: 21
+[s2:12:(43) 680.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 12 -> ID: 22
+[r9:9:(2) 681.592013] [CLOUD/INFO] FINISH push of Genome #0 -> ID: 1
+[s0:10:(45) 681.592013] [CLOUD/INFO] START pull: Genome #0 from 9 to 10 -> ID: 23
+[s5:15:(47) 710.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 15 -> ID: 24
+[s2:12:(49) 711.592013] [CLOUD/INFO] START pull: Genome #1 from 9 to 12 -> ID: 25
+[s2:12:(51) 740.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 12 -> ID: 26
+[s1:11:(53) 741.592013] [CLOUD/INFO] START pull: Genome #0 from 9 to 11 -> ID: 27
+[r9:9:(8) 753.127960] [CLOUD/INFO] FINISH push of Genome #3 -> ID: 4
+[s6:16:(55) 753.127960] [CLOUD/INFO] START pull: Genome #0 from 9 to 16 -> ID: 28
+[s4:14:(57) 770.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 14 -> ID: 29
+[s3:13:(59) 771.592013] [CLOUD/INFO] START pull: Genome #1 from 9 to 13 -> ID: 30
+[s1:11:(61) 783.127960] [CLOUD/INFO] START pull: Genome #1 from 9 to 11 -> ID: 31
+[r9:9:(14) 784.910689] [CLOUD/INFO] FINISH push of Genome #6 -> ID: 7
+[s7:17:(63) 784.910689] [CLOUD/INFO] START pull: Genome #1 from 9 to 17 -> ID: 32
+[s1:11:(65) 800.003339] [CLOUD/INFO] START pull: Genome #1 from 9 to 11 -> ID: 33
+[s6:16:(67) 801.592013] [CLOUD/INFO] START pull: Genome #2 from 9 to 16 -> ID: 34
+[s6:16:(69) 813.127960] [CLOUD/INFO] START pull: Genome #1 from 9 to 16 -> ID: 35
+[s0:10:(71) 814.910689] [CLOUD/INFO] START pull: Genome #1 from 9 to 10 -> ID: 36
+[s0:10:(73) 830.003339] [CLOUD/INFO] START pull: Genome #1 from 9 to 10 -> ID: 37
+[s4:14:(75) 831.592013] [CLOUD/INFO] START pull: Genome #1 from 9 to 14 -> ID: 38
+[r9:9:(4) 842.920766] [CLOUD/INFO] FINISH push of Genome #1 -> ID: 2
+[s7:17:(77) 842.920766] [CLOUD/INFO] START pull: Genome #3 from 9 to 17 -> ID: 39
+[s9:19:(79) 843.127960] [CLOUD/INFO] START pull: Genome #1 from 9 to 19 -> ID: 40
+[s8:18:(81) 844.910689] [CLOUD/INFO] START pull: Genome #0 from 9 to 18 -> ID: 41
+[s7:17:(83) 860.003339] [CLOUD/INFO] START pull: Genome #4 from 9 to 17 -> ID: 42
+[s3:13:(85) 861.592013] [CLOUD/INFO] START pull: Genome #3 from 9 to 13 -> ID: 43
+[s3:13:(87) 872.920766] [CLOUD/INFO] START pull: Genome #0 from 9 to 13 -> ID: 44
+[s6:16:(89) 873.127960] [CLOUD/INFO] START pull: Genome #2 from 9 to 16 -> ID: 45
+[s4:14:(91) 874.910689] [CLOUD/INFO] START pull: Genome #3 from 9 to 14 -> ID: 46
+[s1:11:(93) 890.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 11 -> ID: 47
+[s3:13:(95) 891.592013] [CLOUD/INFO] START pull: Genome #0 from 9 to 13 -> ID: 48
+[s2:12:(97) 902.920766] [CLOUD/INFO] START pull: Genome #1 from 9 to 12 -> ID: 49
+[s4:14:(99) 903.127960] [CLOUD/INFO] START pull: Genome #2 from 9 to 14 -> ID: 50
+[s6:16:(101) 904.910689] [CLOUD/INFO] START pull: Genome #2 from 9 to 16 -> ID: 51
+[s5:15:(103) 920.003339] [CLOUD/INFO] START pull: Genome #3 from 9 to 15 -> ID: 52
+[s6:16:(105) 921.592013] [CLOUD/INFO] START pull: Genome #3 from 9 to 16 -> ID: 53
+[s0:10:(107) 932.920766] [CLOUD/INFO] START pull: Genome #0 from 9 to 10 -> ID: 54
+[s0:10:(109) 933.127960] [CLOUD/INFO] START pull: Genome #4 from 9 to 10 -> ID: 55
+[s1:11:(111) 934.910689] [CLOUD/INFO] START pull: Genome #1 from 9 to 11 -> ID: 56
+[s1:11:(113) 950.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 11 -> ID: 57
+[s6:16:(115) 951.592013] [CLOUD/INFO] START pull: Genome #3 from 9 to 16 -> ID: 58
+[s1:11:(117) 962.920766] [CLOUD/INFO] START pull: Genome #2 from 9 to 11 -> ID: 59
+[s9:19:(119) 963.127960] [CLOUD/INFO] START pull: Genome #4 from 9 to 19 -> ID: 60
+[s1:11:(121) 964.910689] [CLOUD/INFO] START pull: Genome #2 from 9 to 11 -> ID: 61
+[s3:13:(123) 980.003339] [CLOUD/INFO] START pull: Genome #4 from 9 to 13 -> ID: 62
+[s1:11:(125) 981.592013] [CLOUD/INFO] START pull: Genome #3 from 9 to 11 -> ID: 63
+[s6:16:(127) 992.920766] [CLOUD/INFO] START pull: Genome #4 from 9 to 16 -> ID: 64
+[s4:14:(129) 993.127960] [CLOUD/INFO] START pull: Genome #4 from 9 to 14 -> ID: 65
+[s9:19:(131) 994.910689] [CLOUD/INFO] START pull: Genome #2 from 9 to 19 -> ID: 66
+[s2:12:(133) 1010.003339] [CLOUD/INFO] START pull: Genome #3 from 9 to 12 -> ID: 67
+[s5:15:(135) 1011.592013] [CLOUD/INFO] START pull: Genome #1 from 9 to 15 -> ID: 68
+[s1:11:(137) 1022.920766] [CLOUD/INFO] START pull: Genome #2 from 9 to 11 -> ID: 69
+[s1:11:(139) 1023.127960] [CLOUD/INFO] START pull: Genome #4 from 9 to 11 -> ID: 70
+[s1:11:(141) 1024.910689] [CLOUD/INFO] START pull: Genome #3 from 9 to 11 -> ID: 71
+[s0:10:(143) 1040.003339] [CLOUD/INFO] START pull: Genome #1 from 9 to 10 -> ID: 72
+[s8:18:(145) 1041.592013] [CLOUD/INFO] START pull: Genome #1 from 9 to 18 -> ID: 73
+[s6:16:(147) 1052.920766] [CLOUD/INFO] START pull: Genome #1 from 9 to 16 -> ID: 74
+[s4:14:(149) 1053.127960] [CLOUD/INFO] START pull: Genome #3 from 9 to 14 -> ID: 75
+[s8:18:(151) 1054.910689] [CLOUD/INFO] START pull: Genome #3 from 9 to 18 -> ID: 76
+[s0:10:(153) 1070.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 10 -> ID: 77
+[s4:14:(155) 1071.592013] [CLOUD/INFO] START pull: Genome #3 from 9 to 14 -> ID: 78
+[s4:14:(157) 1082.920766] [CLOUD/INFO] START pull: Genome #4 from 9 to 14 -> ID: 79
+[s9:19:(159) 1083.127960] [CLOUD/INFO] START pull: Genome #1 from 9 to 19 -> ID: 80
+[s2:12:(161) 1084.910689] [CLOUD/INFO] START pull: Genome #1 from 9 to 12 -> ID: 81
+[s6:16:(163) 1100.003339] [CLOUD/INFO] START pull: Genome #3 from 9 to 16 -> ID: 82
+[s6:16:(165) 1101.592013] [CLOUD/INFO] START pull: Genome #0 from 9 to 16 -> ID: 83
+[s7:17:(167) 1112.920766] [CLOUD/INFO] START pull: Genome #3 from 9 to 17 -> ID: 84
+[s2:12:(169) 1113.127960] [CLOUD/INFO] START pull: Genome #1 from 9 to 12 -> ID: 85
+[s9:19:(171) 1114.910689] [CLOUD/INFO] START pull: Genome #2 from 9 to 19 -> ID: 86
+[s3:13:(173) 1130.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 13 -> ID: 87
+[s8:18:(175) 1131.592013] [CLOUD/INFO] START pull: Genome #0 from 9 to 18 -> ID: 88
+[s1:11:(177) 1142.920766] [CLOUD/INFO] START pull: Genome #0 from 9 to 11 -> ID: 89
+[s6:16:(179) 1143.127960] [CLOUD/INFO] START pull: Genome #3 from 9 to 16 -> ID: 90
+[s6:16:(181) 1144.910689] [CLOUD/INFO] START pull: Genome #4 from 9 to 16 -> ID: 91
+[s4:14:(183) 1160.003339] [CLOUD/INFO] START pull: Genome #2 from 9 to 14 -> ID: 92
+[s4:14:(185) 1161.592013] [CLOUD/INFO] START pull: Genome #3 from 9 to 14 -> ID: 93
+[s5:15:(187) 1172.920766] [CLOUD/INFO] START pull: Genome #3 from 9 to 15 -> ID: 94
+[s9:19:(189) 1173.127960] [CLOUD/INFO] START pull: Genome #0 from 9 to 19 -> ID: 95
+[s2:12:(191) 1174.910689] [CLOUD/INFO] START pull: Genome #4 from 9 to 12 -> ID: 96
+[s2:12:(193) 1190.003339] [CLOUD/INFO] START pull: Genome #1 from 9 to 12 -> ID: 97
+[s3:13:(195) 1191.592013] [CLOUD/INFO] START pull: Genome #4 from 9 to 13 -> ID: 98
+[s8:18:(197) 1202.920766] [CLOUD/INFO] START pull: Genome #3 from 9 to 18 -> ID: 99
+[s5:15:(199) 1203.127960] [CLOUD/INFO] START pull: Genome #2 from 9 to 15 -> ID: 100
+[s2:12:(201) 1204.910689] [CLOUD/INFO] START pull: Genome #0 from 9 to 12 -> ID: 101
+[s2:12:(203) 1220.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 12 -> ID: 102
+[s2:12:(205) 1221.592013] [CLOUD/INFO] START pull: Genome #1 from 9 to 12 -> ID: 103
+[s4:14:(207) 1232.920766] [CLOUD/INFO] START pull: Genome #1 from 9 to 14 -> ID: 104
+[s4:14:(209) 1233.127960] [CLOUD/INFO] START pull: Genome #0 from 9 to 14 -> ID: 105
+[s8:18:(211) 1234.910689] [CLOUD/INFO] START pull: Genome #0 from 9 to 18 -> ID: 106
+[s2:12:(213) 1250.003339] [CLOUD/INFO] START pull: Genome #0 from 9 to 12 -> ID: 107
+[s9:19:(215) 1251.592013] [CLOUD/INFO] START pull: Genome #3 from 9 to 19 -> ID: 108
+[s1:11:(217) 1262.920766] [CLOUD/INFO] START pull: Genome #1 from 9 to 11 -> ID: 109
+[s3:13:(219) 1263.127960] [CLOUD/INFO] START pull: Genome #1 from 9 to 13 -> ID: 110
+[r9:9:(80) 1684.442543] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 40
+[r9:9:(60) 1945.815126] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 30
+[r9:9:(18) 2315.602613] [CLOUD/INFO] FINISH push of Genome #8 -> ID: 9
+[r9:9:(120) 2404.442543] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 60
+[r9:9:(132) 2483.899366] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 66
+[r9:9:(58) 2565.149444] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 29
+[r9:9:(86) 2575.815126] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 43
+[r9:9:(160) 2601.522394] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 80
+[r9:9:(88) 2609.801384] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 44
+[r9:9:(172) 2625.359441] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 86
+[r9:9:(96) 2640.920130] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 48
+[r9:9:(190) 2648.646349] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 95
+[r9:9:(216) 2661.723691] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 108
+[r9:9:(124) 2729.331455] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 62
+[r9:9:(174) 2819.331455] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 87
+[r9:9:(196) 2839.861013] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 98
+[r9:9:(220) 2850.080434] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 110
+[r9:9:(76) 3242.624862] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 38
+[r9:9:(92) 3459.218243] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 46
+[r9:9:(100) 3543.870056] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 50
+[r9:9:(130) 3723.870056] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 65
+[r9:9:(150) 3807.870056] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 75
+[r9:9:(156) 3826.334109] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 78
+[r9:9:(158) 3834.426075] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 79
+[r9:9:(16) 3869.991968] [CLOUD/INFO] FINISH push of Genome #7 -> ID: 8
+[r9:9:(184) 3872.967361] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 92
+[r9:9:(186) 3873.496919] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 93
+[r9:9:(208) 3887.762670] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 104
+[r9:9:(210) 3887.781506] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 105
+[r9:9:(26) 4305.916697] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 13
+[r9:9:(30) 4555.918384] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 15
+[r9:9:(20) 4932.076215] [CLOUD/INFO] FINISH push of Genome #9 -> ID: 10
+[r9:9:(48) 5154.309553] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 24
+[r9:9:(104) 5449.530033] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 52
+[r9:9:(136) 5533.815922] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 68
+[r9:9:(188) 5650.996653] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 94
+[r9:9:(200) 5669.121211] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 100
+[r9:9:(22) 5857.161707] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 11
+[r9:9:(34) 6295.759847] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 17
+[r9:9:(36) 6341.660969] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 18
+[r9:9:(38) 6379.556528] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 19
+[r9:9:(46) 6475.494175] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 23
+[r9:9:(64) 6557.828653] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 32
+[r9:9:(72) 6577.103598] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 36
+[r9:9:(74) 6585.153160] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 37
+[r9:9:(78) 6590.813145] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 39
+[r9:9:(84) 6596.842388] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 42
+[r9:9:(108) 6616.814223] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 54
+[r9:9:(110) 6616.854652] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 55
+[r9:9:(144) 6631.508626] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 72
+[r9:9:(154) 6634.008668] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 77
+[r9:9:(168) 6637.444432] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 84
+[r9:9:(6) 6760.145457] [CLOUD/INFO] FINISH push of Genome #2 -> ID: 3
+[r9:9:(10) 7178.792995] [CLOUD/INFO] FINISH push of Genome #4 -> ID: 5
+[r9:9:(24) 7553.086305] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 12
+[r9:9:(42) 10020.250283] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 21
+[r9:9:(54) 10511.311817] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 27
+[r9:9:(62) 10665.270821] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 31
+[r9:9:(66) 10719.475803] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 33
+[r9:9:(94) 10954.585688] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 47
+[r9:9:(112) 11049.712430] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 56
+[r9:9:(114) 11077.334341] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 57
+[r9:9:(118) 11098.372332] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 59
+[r9:9:(122) 11101.340797] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 61
+[r9:9:(126) 11124.276527] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 63
+[r9:9:(138) 11175.168433] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 69
+[r9:9:(140) 11175.398012] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 70
+[r9:9:(142) 11177.226912] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 71
+[r9:9:(178) 11279.708444] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 89
+[r9:9:(218) 11359.815105] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 109
+[r9:9:(28) 12416.272080] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 14
+[r9:9:(32) 12756.240786] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 16
+[r9:9:(40) 13321.912053] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 20
+[r9:9:(44) 13542.823496] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 22
+[r9:9:(50) 13636.078307] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 25
+[r9:9:(52) 13710.189897] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 26
+[r9:9:(56) 13737.720376] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 28
+[r9:9:(68) 13824.760915] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 34
+[r9:9:(70) 13841.152758] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 35
+[r9:9:(82) 13881.995908] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 41
+[r9:9:(90) 13918.851960] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 45
+[r9:9:(98) 13952.682142] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 49
+[r9:9:(102) 13954.671929] [CLOUD/INFO] FINISH pull of Genome #2 -> ID: 51
+[r9:9:(106) 13969.962163] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 53
+[r9:9:(116) 13994.282210] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 58
+[r9:9:(128) 14020.568877] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 64
+[r9:9:(134) 14029.975900] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 67
+[r9:9:(146) 14044.490759] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 73
+[r9:9:(148) 14049.624405] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 74
+[r9:9:(152) 14049.971854] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 76
+[r9:9:(162) 14060.820380] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 81
+[r9:9:(164) 14065.622154] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 82
+[r9:9:(166) 14066.081065] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 83
+[r9:9:(170) 14069.090197] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 85
+[r9:9:(176) 14073.130650] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 88
+[r9:9:(180) 14075.786025] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 90
+[r9:9:(182) 14076.103712] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 91
+[r9:9:(192) 14081.346004] [CLOUD/INFO] FINISH pull of Genome #4 -> ID: 96
+[r9:9:(194) 14083.358210] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 97
+[r9:9:(198) 14084.654676] [CLOUD/INFO] FINISH pull of Genome #3 -> ID: 99
+[r9:9:(202) 14084.963886] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 101
+[r9:9:(204) 14086.051565] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 102
+[r9:9:(206) 14086.135914] [CLOUD/INFO] FINISH pull of Genome #1 -> ID: 103
+[r9:9:(212) 14086.548599] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 106
+[r9:9:(214) 14087.115079] [CLOUD/INFO] FINISH pull of Genome #0 -> ID: 107
+[::(0) 14087.115079] [CLOUD/INFO] Simulation time 14087.1
+main.cc: After SIMGRID
+Pushes: 10 - Pulls: 100
+average time: 7333.214205
+Genome Pulls:
+Genome [0] = 35 pulls
+Genome [1] = 24 pulls
+Genome [2] = 11 pulls
+Genome [3] = 19 pulls
+Genome [4] = 11 pulls
+Genome [5] = 0 pulls
+Genome [6] = 0 pulls
+Genome [7] = 0 pulls
+Genome [8] = 0 pulls
+Genome [9] = 0 pulls
+@

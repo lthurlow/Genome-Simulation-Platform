@@ -1,0 +1,358 @@
+head	1.10;
+access;
+symbols;
+locks
+	lthurlow:1.10; strict;
+comment	@// @;
+
+
+1.10
+date	2012.10.08.19.12.48;	author lthurlow;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2012.09.25.22.59.00;	author lthurlow;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2012.09.21.23.42.29;	author lthurlow;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2012.09.21.17.51.54;	author lthurlow;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2012.09.06.17.47.06;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.09.05.19.14.28;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.08.31.05.39.36;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.08.30.23.26.56;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.08.27.23.49.49;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.08.23.20.40.24;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@Headerfile for simgrid
+@
+
+
+1.10
+log
+@10-8-12
+before brad moves over his simgridd
+@
+text
+@#ifndef __SIMGRID_HPP__
+#define __SIMGRID_HPP__
+
+#include "routing.hpp"
+#include "types.hpp"
+
+#include "msg/msg.h" // for xbt_dynar declaration
+
+class proc_info{
+  private:
+    int recv; //host receiving data ALSO DESTINATION
+    int send; //host sending data
+    double size; // optional to change this from default 300GB
+    long time; //keeps track of time process runs for
+    uint8_t pop; //push or pull
+    UI input; // User input
+    Routes *route; //route -> for cached version
+    next_hop* nh; // Next Hop graph information
+    long label; //label for push or pull value
+  public:
+    proc_info(int r, int sz, double t,uint8_t p){
+      recv = r;
+      size = sz;
+      time = t;
+      pop = p;
+    }
+    void set_UI(UI u){ input = u; }
+    void set_time(long t){ time = t; } // this is really the push rate 
+    void set_recv(long d){ recv = d; }
+    void set_send(long s){ send = s;}
+    void set_route(Routes *R){ route = R;}
+    void set_nh(next_hop *h){ nh = h; }
+    void set_label(long l){ label = l; }
+
+    UI get_UI(void){ return input; }
+    double get_size(){ return size; }
+    long get_time(){ return time; }
+    int get_recv(){ return recv; }
+    int get_send(){ return send; }
+    uint8_t get_pop(){ return pop; }
+    Routes* get_route(){ return route; }
+    next_hop* get_nh(){ return nh; }
+    long get_label(){ return label; }
+};
+
+class task_info{
+  private:
+    long label; // Genome ID for task
+    int pop; // Is task pop=1 or push=0
+    double start; //Starting time of the process
+    long task_id; //Unique task ID
+    UI input; // User input
+    int dest; // Destination Node
+    int src; // Source Node
+    Routes *route;
+    next_hop* nh; // Next Hop graph information
+
+  public:
+    long get_label(){ return label; }
+    int get_pop(){ return pop; }
+    double get_start(){ return start;}
+    long get_id(){ return task_id; }
+    int get_dest(){ return dest; }
+    int get_src(){ return src; }
+    Routes* get_route(){ return route; }
+    next_hop* get_nh(){ return nh; }
+
+    void set_label(long l){ label = l; }
+    void set_pop(int p){ pop = p; }
+    void set_start(double t){ start = t; }
+    void set_dest(long d){ dest = d; }
+    void set_src(long s){ src = s; }
+    void set_route(Routes *R){ route = R;}
+    void set_nh(next_hop *h){ nh = h; }
+
+    void set_UI(UI u){ input = u; }
+    UI get_UI(void){ return input; }
+
+    task_info(long l, int p, int t){
+      label = l;
+      pop = p;
+      task_id = t;
+    }
+
+    task_info(long l, int p){
+      label = l;
+      pop = p;
+    }
+
+    task_info(){
+      label = 0;
+      pop = 0;
+    }
+};
+
+
+int recv(int argc, char *argv[]);
+int send(int argc, char *argv[]);
+void single_server(UI input);
+
+int ssc_recv(int argc, char *argv[]);
+int ssc_send(int argc, char *argv[]);
+void single_server_cache(UI input, Routes *R, next_hop *H);
+
+void sim(UI input, Policy P, Routes *R, next_hop *H);
+
+void write_platform(Graph *G, next_hop *H, UI in);
+void write_deploy(Graph *G, next_hop *H);
+
+#endif
+@
+
+
+1.9
+log
+@9/25/12
+Cleaned up code - submittable
+@
+text
+@d28 1
+a28 1
+    void set_time(long t){ time = t; }
+@
+
+
+1.8
+log
+@9/21/12
+Moved headers, changed structures
+@
+text
+@d11 1
+a11 1
+    int recv; //host receiving data XXX ALSO DESTINATION
+d14 4
+a17 4
+    long time;
+    uint8_t pop;
+    UI input;
+    Routes *route;
+d19 1
+a19 1
+    long label;
+a21 1
+    //  send = sd;
+@
+
+
+1.7
+log
+@9/20/12
+@
+text
+@d12 1
+d17 3
+d31 4
+d40 1
+d42 3
+d49 9
+a57 6
+    long label;
+    int pop;
+    double start;
+    long task_id;
+    UI input;
+    long dest;
+d64 4
+a67 1
+    long get_dest(){ return dest; }
+d73 3
+d104 6
+a109 1
+void single_server_cache(UI input);
+@
+
+
+1.6
+log
+@*** empty log message ***
+@
+text
+@a8 4
+long num_pulls = 0;
+double push_del = 0;
+double pull_del = 0;
+
+d11 1
+a11 1
+    int recv; //host receiving data
+d26 1
+d42 2
+d49 1
+d54 1
+d80 4
+@
+
+
+1.5
+log
+@*** empty log message ***
+@
+text
+@d9 3
+d44 1
+d55 3
+a74 2
+void write_platform(Graph *G, next_hop *H, UI in);
+void write_deploy(Graph *G, next_hop *H);
+d76 1
+a76 1
+int s_recv(int argc, char *argv[]);
+a77 4
+
+void simGrid(void);
+
+void sim(UI input, Policy P);
+@
+
+
+1.4
+log
+@8/30/12
+Allows more user input
+@
+text
+@a11 2
+   // int send; //host sending data
+    //int deadblock;  //THIS BLOCK OF DATA GETS SET TO 0 SOMEHOW
+d15 1
+a15 1
+    long label;
+d18 1
+a18 1
+    proc_info(int r, int sz, double t,long l){
+d23 1
+a23 1
+      label = l;
+d26 2
+d32 1
+a32 1
+    long get_label(){ return label; }
+d39 2
+d44 2
+d49 7
+d61 1
+@
+
+
+1.3
+log
+@8/30/12
+Changed proc/task_info to include user input
+this allows tasks to know details of simulation
+@
+text
+@d56 1
+a56 1
+void write_platform(Graph *G, next_hop *H);
+@
+
+
+1.2
+log
+@*** empty log message ***
+@
+text
+@d7 2
+d18 1
+d27 2
+d59 2
+a60 1
+int host(int argc, char *argv[]);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d5 1
+a5 1
+//#include "types.hpp"
+d8 43
+a53 1
+
+d58 2
+@

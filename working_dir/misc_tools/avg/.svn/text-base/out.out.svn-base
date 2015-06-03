@@ -1,0 +1,20 @@
+[h8:8:(1) 5.490216] [CLOUD/INFO] START push: Genome #0 from 8 to 9 -> ID: 1
+[h1:1:(3) 13.841882] [CLOUD/INFO] START push: Genome #1 from 1 to 9 -> ID: 2
+[h2:2:(5) 36.905092] [CLOUD/INFO] START push: Genome #2 from 2 to 9 -> ID: 3
+[h8:8:(7) 41.258190] [CLOUD/INFO] START push: Genome #3 from 8 to 9 -> ID: 4
+[h2:2:(9) 54.349334] [CLOUD/INFO] START push: Genome #4 from 2 to 9 -> ID: 5
+[h4:4:(11) 89.957130] [CLOUD/INFO] START push: Genome #5 from 4 to 9 -> ID: 6
+[h8:8:(13) 104.823648] [CLOUD/INFO] START push: Genome #6 from 8 to 9 -> ID: 7
+[h6:6:(15) 123.537503] [CLOUD/INFO] START push: Genome #7 from 6 to 9 -> ID: 8
+[h4:4:(17) 153.669021] [CLOUD/INFO] START push: Genome #8 from 4 to 9 -> ID: 9
+[h6:6:(19) 184.580408] [CLOUD/INFO] START push: Genome #9 from 6 to 9 -> ID: 10
+[h9:9:(12) 546.046232] [CLOUD/INFO] FINISH push of Genome #5 -> ID: 6
+[h9:9:(18) 609.758123] [CLOUD/INFO] FINISH push of Genome #8 -> ID: 9
+[h9:9:(4) 1082.196159] [CLOUD/INFO] FINISH push of Genome #1 -> ID: 2
+[h9:9:(2) 1934.037309] [CLOUD/INFO] FINISH push of Genome #0 -> ID: 1
+[h9:9:(6) 2030.046603] [CLOUD/INFO] FINISH push of Genome #2 -> ID: 3
+[h9:9:(8) 2035.230792] [CLOUD/INFO] FINISH push of Genome #3 -> ID: 4
+[h9:9:(10) 2045.895572] [CLOUD/INFO] FINISH push of Genome #4 -> ID: 5
+[h9:9:(14) 2070.991413] [CLOUD/INFO] FINISH push of Genome #6 -> ID: 7
+[h9:9:(16) 2079.145576] [CLOUD/INFO] FINISH push of Genome #7 -> ID: 8
+[h9:9:(20) 2086.775005] [CLOUD/INFO] FINISH push of Genome #9 -> ID: 10

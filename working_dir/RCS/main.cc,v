@@ -1,0 +1,1292 @@
+head	1.25;
+access;
+symbols;
+locks
+	lthurlow:1.25; strict;
+comment	@// @;
+
+
+1.25
+date	2012.09.25.22.59.00;	author lthurlow;	state Exp;
+branches;
+next	1.24;
+
+1.24
+date	2012.09.21.23.42.29;	author lthurlow;	state Exp;
+branches;
+next	1.23;
+
+1.23
+date	2012.09.06.17.47.06;	author lthurlow;	state Exp;
+branches;
+next	1.22;
+
+1.22
+date	2012.09.05.19.14.28;	author lthurlow;	state Exp;
+branches;
+next	1.21;
+
+1.21
+date	2012.08.31.05.39.36;	author lthurlow;	state Exp;
+branches;
+next	1.20;
+
+1.20
+date	2012.08.30.23.26.56;	author lthurlow;	state Exp;
+branches;
+next	1.19;
+
+1.19
+date	2012.08.27.23.49.49;	author lthurlow;	state Exp;
+branches;
+next	1.18;
+
+1.18
+date	2012.08.23.20.40.24;	author lthurlow;	state Exp;
+branches;
+next	1.17;
+
+1.17
+date	2012.08.03.22.02.19;	author lthurlow;	state Exp;
+branches;
+next	1.16;
+
+1.16
+date	2012.07.27.19.46.36;	author lthurlow;	state Exp;
+branches;
+next	1.15;
+
+1.15
+date	2012.07.27.00.02.06;	author lthurlow;	state Exp;
+branches;
+next	1.14;
+
+1.14
+date	2012.07.23.23.19.59;	author lthurlow;	state Exp;
+branches;
+next	1.13;
+
+1.13
+date	2012.07.23.17.33.20;	author lthurlow;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2012.07.20.17.51.45;	author lthurlow;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2012.07.20.17.18.19;	author lthurlow;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2012.07.20.05.58.00;	author lthurlow;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2012.07.19.21.46.35;	author lthurlow;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2012.07.09.22.56.42;	author lthurlow;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2012.07.07.20.42.48;	author lthurlow;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2012.07.07.18.15.49;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.06.27.22.34.30;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.06.22.07.06.01;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.06.21.23.53.24;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.06.21.17.31.29;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.25
+log
+@9/25/12
+Cleaned up code - submittable
+added more user input - error checking
+@
+text
+@#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <set>
+
+#include "types.hpp"
+#include "randvars2.hpp"
+#include "bgl_graph_info.hpp"
+#include "routing.hpp"
+#ifndef __SIMGRID_HPP__ //may not be needed with other file guards in place
+#include "simgrid.hpp"
+#endif
+
+using namespace std;
+
+/*
+ * Take in arguments:
+ * Size of graph (# of verticies, # of edges)
+ *  -- In future, graph stats, (avg b/w, avg link weight, etc)
+ * value to seed for generator.
+*/
+int main(int argc, char* argv[]){
+  bool flag_to_print = false; //print simulation variable values
+  int vert = 10; //number of nodes in network
+  float ce = 0.5; //chance of edge [0,1]
+  int degree = vert-(vert/2); //guarenteed by default <= vert, >= 0 when vert != 0
+  int seed = 100; // seed for random generator
+  int network_route = 1;
+
+  // Objects -> Produced
+  long objects = 10; // How many pushes will be done
+  // Pulls -> Consumed
+  long pulls = 100; // How many pulls will be done
+  
+  //MEGABYTES
+  int obj_size = 300000; //(MB) 300 Gb
+  long min_capacity = 1250;
+  long max_capacity = 1250;
+
+  //SECONDS
+  float push_rate = 20; //inter-arrival rate for pushes
+  double pull_rate = 30; //inter-arrival rate for pulls
+
+  //double time_delta = 20.0; // time will use an exponentional function
+
+  long min_weight = 10; // These are translated to link latency
+  long max_weight = 100; // equal => uniform latency
+
+  int data_policy = 1; // Single Server, No Cache Default
+
+  int c; // character from input of user
+
+  // get options and parse.
+  
+  while ((c = getopt(argc, argv, "s:o:t:v:d:r:w:W:c:C:p:P:D:hH")) != -1){
+    switch (c){
+      case 's': // passed in a seed.
+        seed = atoi(optarg);
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert seed to valid integer." );
+        }
+        DEBUGO("SEED: %d (expects int)\n",seed);
+        break;
+      case 'o': //objects in simulation
+        objects = atol(optarg);
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert number of objects to valid integer." );
+        }
+        break;
+      case 't': //total pulls to make
+        pulls = atol(optarg);
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert number of pulls to valid integer." );
+        }
+        break;
+      case 'v': //vertices in graph
+        //err = strtol(optarg,NULL,vert);
+        vert = atol(optarg);
+        if (vert < 3){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*) "Please choose a more dense topology.");
+        }
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*) "Could not convert vertices to valid integer.");
+        }
+        break;
+      case 'd': //degree for graph
+        degree = atoi(optarg);
+        if (degree <= 0){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*) "Not a valid degree value, deg > 0.");
+        }
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert degree to valid integer.");
+        }
+        break;
+      case 'r': //routing policy
+        network_route = atoi(optarg);
+        if (network_route <= 0){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*) "Not a valid routing value.");
+        }
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert routing value to valid integer.");
+        }
+        break;
+      case 'w':
+        min_weight = atof(optarg); // minimum weight for link
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert minimum weight to valid integer.");
+        }
+        break;
+      case 'W':
+        max_weight = atof(optarg); //maximum link weight
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert maximum weight to valid integer.");
+        }
+        break;
+      case 'c':
+        min_capacity = atol(optarg); //min capacity for link
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert minimum capacity to valid integer.");
+        }
+        break;
+      case 'C':
+        max_capacity = atol(optarg); //max capacity for a link
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert maximum capacity to valid integer.");
+        }
+        break;
+        break;
+      case 'p': //arrival rate for pushes
+        push_rate = atof(optarg);
+        if (push_rate <= 0){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Invalid arrival rate, must be above 0 or a valid float");
+        }
+        break;
+      case 'P': //arival rate for pulls
+        pull_rate = atof(optarg);
+        if (pull_rate <= 0){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Invalid arrival rate, must be above 0 or a valid float");
+        }
+        break;
+      case 'D': //how the simulation distributes genomes
+        data_policy = atoi(optarg);
+        if (errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert maximum capacity to valid integer.");
+        }
+        break;
+      case 'h': // help menu
+      default:
+        print_help();
+        exit_fail((char*)__FILE__,__LINE__,0, (char*)"Unknown Value Entered.");
+        break;
+      case 'H':
+        flag_to_print = true;
+        break;
+    }
+  }
+
+
+  if (min_capacity > max_capacity){
+    max_capacity = min_capacity;
+  }
+  // Need to make sure here to apply 1,2,3 rule to what the user entered
+  // if they did not also change pulls & objects.
+  
+  //convert degree into a percentage for gt-itm to calculate chance of edge.
+  ce = degree/(float)(vert-1);
+  if ( ce > 1 || ce <= 0){
+    exit_fail((char*)__FILE__,__LINE__,2, (char*) "Degree is not valid for this graph.");
+  }
+
+  /* Set passed in parameters into class to pass to functions */
+  UI input = new user_input;
+  input->set_vertices(vert); //verts in graph
+  input->set_edgechance(ce); //degree
+  input->set_pushrate(push_rate); //push rate for genome
+  input->set_pullrate(pull_rate); //pull rate for genome
+  input->set_pulls(pulls); //pulls in simulation
+  input->set_objects(objects); //objects in simulation
+  input->set_size(obj_size); //object size in simulation
+  input->set_mincap(min_capacity); //min cap of link
+  input->set_maxcap(max_capacity); //max cap of link
+  input->set_minw(min_weight); //min weight i.e latency
+  input->set_maxw(max_weight); //max weight i.e latency
+  input->set_seed(seed); //seed for simulation
+  input->set_route(network_route); //network routing policy
+
+  /* Set policy to be used to distribute/cache data */
+  Policy P = new policy;
+  P->set_policy(data_policy);
+
+  if (flag_to_print){ // Print user values
+    print_input(input, P);
+  }
+
+
+  //Lol, this needs to be before I aritificially adjust the lengths.
+  //Otherwise, gnarly errors, mainly because it will try accessing an
+  //element that doesnt exist.  
+  Routes R(vert,std::vector<double>(vert));
+
+  /* Verify the policy is legitamate.*/
+  if (P->get_policy() == 0 || P->get_policy() > MAX_POLICIES){
+    exit_fail((char*)__FILE__,__LINE__,3, (char*) "Invalid Policy entered.");
+  }
+
+  /* Generate the initial gt-itm graph based on user-input */
+  gen_graph(input);
+
+  /* Convert the sgb file to alternate formate and then to dot format */
+  Graph G = con_graph(input);
+  
+  /* Create a structure for keeping next hop from src to dest*/ 
+  next_hop hop;
+  /* Build the next hop table based on Routing Policy*/
+  hop = build_forwarding_tables(G, network_route, &R); //takes in some int based on how to route.
+  
+  if (hop.size() <= 1){
+    exit_fail((char*)__FILE__,__LINE__,3, (char*) "Error: Routing was not done. Verify correct Route value.");
+  }
+
+  /* Write out the MSG platform file for MSG simulation*/
+  write_platform(&G, &hop, input);
+  
+  //DEBUGE("Before SIMGRID\n");
+  sim(input, P, &R, &hop);
+  //DEBUGE("After SIMGRID\n");
+
+}
+@
+
+
+1.24
+log
+@2/21/12
+Changed prototype to sim()
+@
+text
+@d16 1
+a16 1
+#ifndef __SIMGRID_HPP__
+d29 1
+a29 1
+
+a32 1
+  long num_requests = 10; // number of requests to send to network
+d34 1
+d42 1
+a42 1
+  int obj_size = 300000; // 300 Gb
+d55 1
+a55 1
+  int data_policy = 1;
+d57 1
+a57 2
+  //declared variables
+  int c;
+d61 1
+a61 1
+  while ((c = getopt(argc, argv, "s:o:t:v:d:w:W:c:C:p:a:A:D:h")) != -1){
+d68 1
+d70 1
+a70 1
+      case 'o':
+a92 1
+        //err = strtol(optarg,NULL,degree);
+d101 9
+d111 1
+a111 2
+        //err = strtol(optarg,NULL,min_weight);
+        min_weight = atof(optarg);
+d117 1
+a117 1
+        max_weight = atof(optarg);
+d123 1
+a123 2
+        //err = strtol(optarg,NULL,min_capacity);
+        min_capacity = atol(optarg);
+d129 1
+a129 2
+        max_capacity = atol(optarg);
+        //err = strtol(optarg,NULL,max_capacity);
+a133 7
+/*
+      case 'p': //push rate
+        push_rate = atof(optarg);
+        if (push_rate <= 0){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Invalid push rate, must be above 0 or a valid float");
+        }
+*/
+d135 1
+a135 1
+      case 'a': //arrival rate for pushes
+d141 1
+a141 1
+      case 'A': //arival rate for pulls
+d147 1
+a147 2
+      case 'D':
+        //err = strtol(optarg,NULL,data_policy);
+d158 3
+d164 1
+a176 7
+  /* Could problem remove this, but for now can keep it.
+  if (num_requests*(1-push_rate) < num_requests*(push_rate)){
+    fprintf(stderr, "Warning: Allowing more pulls than there are objects.\n");
+    fprintf(stderr, "This will cause a non-uniform distribution for object requests.\n");
+  }
+  */
+
+d179 13
+a191 15
+  input->set_requests(num_requests);
+  input->set_vertices(vert);
+  input->set_edgechance(ce);
+  //input->set_timedelta(time_delta);
+  input->set_pushrate(push_rate);
+  input->set_pullrate(pull_rate);
+  input->set_pulls(pulls);
+  input->set_objects(objects);
+  input->set_size(obj_size);
+  input->set_mincap(min_capacity);
+  input->set_maxcap(max_capacity);
+  input->set_minw(min_weight);
+  input->set_maxw(max_weight);
+  input->set_seed(seed);
+  DEBUGE("verts: %d, in verts: %d\n", vert, input->get_vertices());
+d197 5
+a211 1
+
+d218 1
+a218 9
+  /* Create a stream of requests to be filled by gen_request for sim */
+  //Request r = new request[num_requests];
+  /* Generate Requests */
+
+  //gen_request(r,P,input);
+  /* DEBUG INFORMATION */
+
+  //print_requests(r, num_requests);
+  
+d220 2
+a221 2
+
+  hop = build_forwarding_tables(G, 1, &R); //takes in some int based on how to route.
+d227 1
+a228 1
+  //write_deploy(&G,&hop);
+d230 1
+a230 1
+  DEBUGE("Before SIMGRID\n");
+d232 1
+a232 1
+  DEBUGE("After SIMGRID\n");
+@
+
+
+1.23
+log
+@*** empty log message ***
+@
+text
+@d16 3
+a18 1
+//#include "simgrid.hpp"
+d243 1
+a243 1
+  sim(input, P);
+@
+
+
+1.22
+log
+@*** empty log message ***
+@
+text
+@d16 1
+a16 1
+#include "simgrid.hpp"
+@
+
+
+1.21
+log
+@8/30/12
+Allows more user input
+@
+text
+@d33 2
+d36 4
+a39 1
+  long pulls = 10; // How many pulls will be done
+d41 8
+a48 2
+  float push_rate = .7; // push will use a binomial distribution
+  double time_delta = 20.0; // time will use an exponentional function
+d50 2
+a51 4
+  long min_weight = 0;
+  long max_weight = 1;
+  long min_capacity = 10000; // 10 Gbs
+  long max_capacity = 10000;
+d60 1
+a60 1
+  while ((c = getopt(argc, argv, "s:r:v:d:w:W:c:C:o:p:a:yhD:R:T")) != -1){
+a62 1
+        //err = strtol(optarg,NULL,seed);
+a69 1
+        //err = strtol(optarg,NULL,objects);
+d74 6
+d127 1
+d133 1
+d135 9
+a143 3
+      case 'a': //arrival rate
+        time_delta = atof(optarg);
+        if (time_delta <= 0){
+d162 3
+a184 1
+  DEBUGE("verts: %d, in verts: %d\n", vert, input->get_vertices());
+d186 1
+a186 1
+  input->set_timedelta(time_delta);
+d188 1
+d196 2
+d218 1
+a218 1
+  Graph G = con_graph(seed);
+@
+
+
+1.20
+log
+@8/30/12
+Made changes for simGrid extentions
+@
+text
+@a15 1
+//#include "simulation.hpp"
+a19 12
+
+int vert = 10; //number of nodes in network
+float ce = 0.5; //chance of edge [0,1]
+int degree = vert-(vert/2); //guarenteed by default <= vert, >= 0 when vert != 0
+long num_requests = 10; // number of requests to send to network
+int seed = 100; // seed for random generator
+long objects = 10; // How many pushes will be done
+long pulls = 10; // How many pulls will be done
+int obj_size = 300000; // 300 Gb
+float push_rate = .7; // push will use a binomial distribution
+double time_delta = 20.0; // time will use an exponentional function
+
+d27 19
+a47 1
+  int err;
+d50 2
+a51 1
+  while ((c = getopt(argc, argv, "s:hp:n:V:D:")) != -1){
+d54 21
+a74 4
+        err = strtol(optarg,NULL,seed);
+        if (err == 0 || errno == ERANGE){
+          //fprintf(stderr,\n");
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert number of request to valid integer." );
+d77 9
+a85 4
+      case 'h': // help menu
+      default:
+        print_help();
+        exit_fail((char*)__FILE__,__LINE__,1, (char*)"Unknown Value Entered.");
+d87 25
+a111 4
+      case 'n':
+        err = strtol(optarg,NULL,num_requests);
+        if (err == 0 || errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert number of request to valid integer.");
+d120 4
+a123 4
+      case 'V': //vertices in graph
+        err = strtol(optarg,NULL,vert);
+        if (vert < 3){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*) "Please choose a more dense topology.");
+d125 6
+a130 2
+        if (err == 0 || errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*) "Could not convert vertices to valid integer.");
+d133 4
+a136 8
+      case 'D': //degree for graph
+        err = strtol(optarg,NULL,degree);
+        if (degree <= 0){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*) "Not a valid degree value, deg > 0.");
+        }
+        if (err == 0 || errno == ERANGE){
+          exit_fail((char*)__FILE__,__LINE__,1, (char*)"Could not convert degree to valid integer.");
+        }
+d150 1
+a150 1
+  /* Could problem remove this, but for now can keep it.*/
+d155 1
+d161 1
+d168 4
+d175 1
+a175 1
+  P->set_policy(1);
+d211 2
+a212 2
+  write_platform(&G, &hop);
+  write_deploy(&G,&hop);
+a216 2
+
+  //sim(&G,input,&R, hop, P);
+@
+
+
+1.19
+log
+@*** empty log message ***
+@
+text
+@d31 1
+a31 1
+double time_delta = 15.0; // time will use an exponentional function
+d157 1
+a157 1
+  //write_deploy(&G,&hop);
+@
+
+
+1.18
+log
+@8/23/12
+@
+text
+@d16 1
+a16 1
+#include "simulation.hpp"
+d31 1
+a31 1
+double time_delta = 50.0; // time will use an exponentional function
+d160 1
+a160 1
+  simGrid();
+@
+
+
+1.17
+log
+@8-3-12
+NO CHANGE, JUST COPYING
+@
+text
+@d17 1
+a39 1
+
+d50 2
+a51 2
+          fprintf(stderr,"Could not convert number of request to valid integer.\n");
+          exit(1);
+d57 1
+a57 1
+        exit(1);
+d62 1
+a62 2
+          fprintf(stderr,"Could not convert number of request to valid integer.\n");
+          exit(1);
+d68 1
+a68 1
+          fprintf(stderr, "Invalid push rate, must be above 0 or a valid float\n");
+d74 1
+a74 2
+          fprintf(stderr,"Please choose a more dense topology.\n");
+          exit(1);
+d77 1
+a77 2
+          fprintf(stderr,"Could not convert vertices to valid integer.\n");
+          exit(1);
+d83 1
+a83 2
+          fprintf(stderr, "Not a valid degree value, deg > 0.\n");
+          exit(1);
+d86 1
+a86 2
+          fprintf(stderr,"Could not convert degree to valid integer.\n");
+          exit(1);
+d98 1
+a98 2
+    fprintf(stderr,"Degree is not valid for this graph.\n");
+    exit(2);
+d129 1
+a129 2
+    fprintf(stderr, "Invalid Policy entered\n.");
+    exit(3);
+d153 1
+a153 2
+    fprintf(stderr, "Error: Routing was not done. Verify correct Route value.");
+    exit(3);
+d156 8
+a163 1
+  sim(&G,input,&R, hop, P);
+@
+
+
+1.16
+log
+@6/27/12
+First iteration of simulation in motion
+working (?)
+Eitherway, it runs to a point, and this should be first revision of working
+@
+text
+@d30 1
+a30 1
+double time_delta = 500.0; // time will use an exponentional function
+@
+
+
+1.15
+log
+@7/26/12
+No change except to headers
+@
+text
+@a21 2
+long objects = 100; // How many pushes will be done
+long pulls = 1000; // How many pulls will be done
+d24 1
+a24 1
+long num_requests = 1000; // number of requests to send to network
+d26 3
+d122 1
+a163 2
+
+
+a165 2
+  print_graph(G);
+
+@
+
+
+1.14
+log
+@7/23/12
+Minor Fix, solved major issue.
+Routes vector was being based of vertices, whereas
+the OSPF was based off graph vertices, so in this case
+where this was a signle server, I was subtracting a vertex
+when i clearly shouldnt have
+fixed by moving above the policy management section.
+==> probably needs to move over to simulation
+@
+text
+@d15 1
+a16 1
+#include "routing.hpp"
+d22 2
+d95 3
+d119 2
+a135 7
+  else if (P->get_policy() == 1){
+    vert -= 1; //last node will be destination node. Read Single Server notes.
+    if (vert == 1){ //make sure that given this policy, more than 1 node
+      fprintf(stderr, "Single Server Policy not usable in 1 vertex graph.\n");
+      exit(3);
+    }
+  }
+d153 10
+d164 1
+a164 1
+  build_forwarding_tables(G, 1, &R); //takes in some int based on how to route.
+d166 1
+a166 1
+  sim(G,input,&R,P);
+@
+
+
+1.13
+log
+@7/23/12
+In the process of moving gen_req -> simulation.cc
+@
+text
+@a57 5
+        if (num_requests > SHRT_MAX || num_requests < 0){ //try to catch overflow.
+          fprintf(stderr,"# of Request bounded by int, must be less than 32000\n");
+          fprintf(stderr,"To fix this, make num_request a long\n");
+          exit(2);
+        }
+d119 5
+a152 1
+  Routes R(vert,std::vector<double>(vert));
+@
+
+
+1.12
+log
+@changed to pointers for routes
+@
+text
+@d24 1
+a24 1
+int num_requests = 1000; // number of requests to send to network
+d58 5
+d124 14
+d145 1
+a145 1
+  Request r = new request[num_requests];
+d147 2
+a148 1
+  gen_request(r,P,input);
+d150 2
+a151 1
+  print_requests(r, num_requests);
+d157 1
+a157 1
+  sim(G,r,&R,P);
+@
+
+
+1.11
+log
+@7/20/12
+Changed *vector to vect vect
+@
+text
+@d116 2
+a117 2
+  Policy p = new policy;
+  p->set_policy(1);
+d128 1
+a128 1
+  gen_request(r,p,input);
+a132 4
+  //for(int i = 0; i < vert; i++){
+    //R[i](num_vertices(G));
+  //}
+  build_forwarding_tables(G, 1, R); //takes in some int based on how to route.
+d134 3
+a136 1
+  sim(G,r,R);
+@
+
+
+1.10
+log
+@*** empty log message ***
+@
+text
+@d132 4
+a135 1
+  route_table R[vert];
+@
+
+
+1.9
+log
+@7/19/12
+No major changes.
+@
+text
+@d15 2
+a16 1
+
+d131 3
+d135 1
+a135 2
+  
+  build_forwarding_tables(G, 1); //takes in some int based on how to route.
+@
+
+
+1.8
+log
+@..
+@
+text
+@d124 1
+a124 1
+  /* Create a stream of requests to be filled by gen_request for simulation */
+d129 1
+a129 1
+  //print_requests(r, num_requests);
+@
+
+
+1.7
+log
+@Comments Added
+@
+text
+@a10 1
+#include "boost/tuple/tuple.hpp"
+d13 3
+a17 1
+using namespace boost;
+d120 1
+d122 1
+a122 1
+  con_graph(seed);
+d131 3
+@
+
+
+1.6
+log
+@7/7/12
+Mainly modified function declerations
+@
+text
+@d49 1
+a49 1
+      case 'h':
+d67 1
+a67 1
+      case 'V':
+d99 1
+d105 1
+a105 2
+  //DEBUG("main debug:: req: %d, vert: %d, ec: %f\n",
+  //      num_requests, vert, ce);
+a111 3
+  //DEBUG("main debug:: req: %d, vert: %d, ec: %f\n",
+  //      input->get_requests(), input->get_vertices(), 
+  //      input->get_edgechance());
+d113 1
+a114 2
+  // when we take user input, verify it is inbounds
+  //if (x > MAX_POLICIES || x == 0)  exit(2);
+d117 1
+d119 1
+d121 2
+d124 1
+a124 1
+
+d126 2
+a127 1
+  print_requests(r, num_requests);
+@
+
+
+1.5
+log
+@6/29/12
+Modified main.cc for using a binomial distribution
+cleaned up some of the code, added more error checking
+changed method calls that were also modified.
+@
+text
+@d19 1
+a19 1
+int vert = 10;
+d22 4
+a25 3
+int num_requests = 1000;
+int seed = 100;
+float push_rate = .7;
+a92 2
+  //fprintf(stderr,"before setting: %f\n",ce);
+  //fprintf(stderr,"degree - verts: %d - %d\n",degree,vert);
+d99 5
+d110 2
+d122 1
+a122 1
+  con_graph();
+d125 1
+a125 1
+  gen_request(r,p,seed,num_requests,vert,push_rate);
+@
+
+
+1.4
+log
+@6/27/12
+3:30pm
+Removed all auxilary functions to seperate files, code was
+getting out of hand.
+main should now only handle the main function thread.
+@
+text
+@d4 1
+d20 2
+a21 1
+int edge = 20;
+d24 1
+d36 1
+d39 1
+a39 1
+  while ((c = getopt(argc, argv, "s:hn:V:E:")) != -1){
+d42 5
+a46 1
+        strtol(optarg,NULL,seed);
+d51 1
+d54 11
+a64 1
+        strtol(optarg,NULL,num_requests);
+d67 21
+a87 7
+        strtol(optarg,NULL,vert);
+        if (vert < 3) fprintf(stderr,"Please choose a more dense topology.");
+        exit(1);
+      case 'E':
+        strtol(optarg,NULL,edge);
+        if (edge < 3) fprintf(stderr,"Please choose a more dense topology.");
+        exit(1);
+d90 9
+d100 16
+a115 1
+  gen_graph();
+d119 1
+a119 1
+  gen_request(r,seed,num_requests,vert);
+a121 1
+
+@
+
+
+1.3
+log
+@*** empty log message ***
+@
+text
+@d4 1
+d6 3
+a9 2
+#include <map>
+#include <fstream>
+d11 1
+a13 9
+/*comment out DEBUG define line to remove debug code!*/
+#define PRINT_DEBUG 1  //comment out this line to remove debug code
+
+#ifdef PRINT_DEBUG //defines debug
+#define DEBUG(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define DEBUG(...)
+#endif
+
+d17 1
+d59 1
+d62 2
+a63 5
+  gen_request(r);
+  print_requests(r);
+
+
+}
+a64 128
+/*
+ * What needs to be generated:
+ * Push Type | Src | Dest | Start time
+ * Needs to remember what has been pushed (so it doesnt dupl)
+ *
+ * Pass in an array of pairs
+ * modify the array, and return.
+ * Should also take in a seed in the case for repeated experiements
+*/
+
+//void gen_request(tuple<int,std::pair<int,int>,long> *t, int req){
+void gen_request(request *t){
+  int counter = 0;
+  long time = 0;
+  set< pair<int,int> > appeared;
+  srand(seed);
+  while(counter < num_requests){
+    int type = 0;
+    int source = rand() % vert;
+    int destination = rand() % vert;
+    /* For a small topology this will run longer */
+    while (destination == source){ // src != dest
+      destination = rand() % vert;
+    }
+
+    pair<int,int> element (source,destination);
+    const bool is_in = appeared.find(element) != appeared.end();
+    if (is_in){ type = 1; }
+    else {
+      appeared.insert(element);
+      type = 0;
+    }
+    // if src dest == exist, type = pull, else push.
+    time += (rand() % 1000 +1);
+    t[counter].set_type(type);
+    t[counter].set_time(time);
+    t[counter].set_src_dest(pair<int,int>(source,destination));
+    counter++;
+  }
+}
+
+/*
+ * Generate the graph to run simulation on.
+ * Make a preference file that itm can then use to generate the graph
+ * Prefernece file has special values, see comments below.
+ *
+*/
+
+void gen_graph(){
+
+  int syscheck = 0; //return value for system calls
+
+  /* Makes gt-itm not crash.*/
+  system("echo export MALLOC_CHECK_=0");
+  syscheck = system("export MALLOC_CHECK_=0"); //makes itm not crash
+  if (syscheck != 0){
+    fprintf(stderr, "Export Command Failed!");
+    exit(1);
+  }
+
+  /* create a file to use for prefrences for gt-itm*/
+  ofstream pref;
+  pref.open("pref"); 
+
+  /* 
+   * geo: flat random graph 
+   * hier: N-level hierarchial graph
+   * ts: transit-stub graph
+   * 
+   * Fromat:
+   * <method> [above] <# of graphs> <seed> [optional]
+  */
+
+  pref << "geo 1\n"; // if needed we can change this so it isnt flat
+
+  /*
+   * Graph Parameters:
+   * n: number of nodes in graph
+   * scale: one-sided dimension of space in which nodes are distributed
+   * edgemethod:
+   *   1) Waxman 1
+   *   2) Waxman 2
+   *   3) Pure Random 
+   *   4) Door-Leslie
+   *   5) Exponential 
+   *   6) Locality
+   * alpha: random graph parameter (0 =< alpha =< 1.0)
+   * beta: " " (0 <= beta)
+   * gamma: " " (0 <= gamma)
+   * geo: <n> <scale> <edgemethod> <alpha> [<beta><gamma>]
+  */
+  pref << "10 10 3 .2\n";
+  pref.close();
+
+  /* Run itm on pref file created above. */
+  system("echo ~/Genome/ns-allinone-2.35/gt-itm/bin/itm pref");  
+  syscheck = system("~/Genome/ns-allinone-2.35/gt-itm/bin/itm pref");  
+  if (syscheck != 0){
+    fprintf(stderr, "itm not found or failed to run!");
+    exit(1);
+  }
+
+  /*convert gb file to readable alternate format*/
+  system("echo ~/Genome/ns-allinone-2.35/gt-itm/bin/sgb2alt pref-0.gb pref.alt");
+  syscheck = system("~/Genome/ns-allinone-2.35/gt-itm/bin/sgb2alt pref-0.gb pref.alt");
+  if (syscheck==1){
+    fprintf(stderr, "sgb2alt failed to run, not found, incompatable file!");
+    exit(1);
+  }
+}
+
+
+/* Print out requests & gathers statistics*/
+void print_requests(request *t){
+  int i;
+  int pulls = 0;
+  for (i = 0; i < num_requests; i++){
+    /*prints out each request*/
+    DEBUG("%2d %4d %4d %8d \n",t[i].get_type(),
+      t[i].get_src_dest().first, t[i].get_src_dest().second,
+      t[i].get_time());
+    if (t[i].get_type() == 1) pulls++; //count # of pulls of requests
+  }
+  DEBUG("# of pushes: %4d\n# of pulls %4d\n",num_requests-pulls,pulls);
+  DEBUG("pull/push ratio: %4.4f\n",pulls/(float)(num_requests-pulls));
+  DEBUG("To increase pulls, decrease vertices, or increase requests\n");
+  DEBUG("10:1 ~ 10 vertices, 2:1 ~ 20 vertices\n");
+}
+a65 10
+/* Print help menu */
+void print_help(){
+  fprintf(stderr,"Cloud Data Distribution Help Menu:\n");
+  fprintf(stderr,"main [s:n:V:E:h]\n");
+  fprintf(stderr,"[s]eed, pass the seed value\n");
+  fprintf(stderr,"[n]umber of requests to generate\n");
+  fprintf(stderr,"[V]ertices in the graph to be generated\n");
+  fprintf(stderr,"[E]ertices in the graph to be generated\n");
+  fprintf(stderr,"[h]elp, for this help menu\n");
+  return;
+@
+
+
+1.2
+log
+@6-21-12
+5pm
+Requests are working, pushing and pull with time
+@
+text
+@d7 1
+a19 1
+
+d63 1
+d113 71
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 14
+d19 8
+a26 3
+/* Forward Declerations */
+void print_help();
+void gen_request();
+d34 1
+d36 1
+a36 4
+using namespace std;
+
+int main(int argc, char* argv[]){
+  int seed;
+d39 2
+a40 1
+  while ((c = getopt(argc, argv, "s:h")) != -1){
+d46 1
+d49 11
+d62 7
+d81 30
+a110 1
+void gen_request();
+d112 16
+a127 3
+/*
+ * Print help menu
+*/
+d129 1
+d132 1
+a132 1
+  fprintf(stderr,"main [s:h]\n");
+d134 3
+@

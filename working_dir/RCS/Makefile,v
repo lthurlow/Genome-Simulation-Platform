@@ -1,0 +1,379 @@
+head	1.13;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.13
+date	2013.02.12.21.45.14;	author lthurlow;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2012.09.21.17.51.54;	author lthurlow;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2012.09.05.19.14.28;	author lthurlow;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2012.08.27.23.49.49;	author lthurlow;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2012.08.23.20.40.24;	author lthurlow;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2012.08.07.19.20.26;	author lthurlow;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2012.07.19.21.46.35;	author lthurlow;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2012.07.09.22.56.42;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.07.07.18.15.49;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.06.27.22.34.30;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.06.22.07.06.01;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.06.21.17.31.29;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.13
+log
+@modified.
+@
+text
+@UNAME := $(shell uname)
+OUT := $(shell echo "Building for $(UNAME)\n")
+
+INCLUDE = -I/opt/simgrid/include/ #-I/../SimGrid-3.8.1/include/
+SOURCE = main.cc  file_format.cc util.cc randvars2.cc \
+         routing.cc simgrid.cc #single_server.cc #simulation.cc generate_request.cc
+OBJ =    main.o   file_format.o  util.o  randvars2.o  \
+         routing.o  simgrid.o  #single_server.o #simulation.o generate_request.o 
+LIB = -lgsl -lgslcblas -lm -lsimgrid -rdynamic /opt/simgrid/lib/libsimgrid.so.3.8.1
+HEADERS = bgl_graph_info.hpp types.hpp randvars2.hpp routing.hpp \
+          simgrid.hpp #simulation.hpp
+EXE = sim
+CFLAGS = -g -ansi -Wall -lrt -L/opt/simgrid/lib/
+GENFILES = pref pref-0.gb pref.alt graph.dot graph.pdf
+
+
+
+ALL: DEBUG $(EXE)
+
+DEBUG:
+	@@echo "------> Building for $(UNAME) <------"
+
+# Source and Target have same name, this will compile that for us.
+# $< = first dependency
+%.o: %.cc $(HEADERS)
+	g++ $(CFLAGS) $(INCLUDE) -c -o $@@ $<
+
+# $@@ = left hand side
+# $^ = right hand side
+$(EXE): $(OBJ)
+	g++ $(CFLAGS) $(INCLUDE) -o $@@ $^ $(LIB)
+
+#executables - kill errs
+#objects - print errors
+#files - kill errs
+#touch before remove, removes rm error, updates timestamp for make.
+clean :
+	touch sim.out sim.err sim.o sim.pdf sim.trace pref sim.xml sim.dot uncat.plist
+	rm sim *.o *.pdf *.trace pref* *.xml *.dot uncat.plist
+	rm *.out *.err
+@
+
+
+1.12
+log
+@9/20/12
+@
+text
+@d4 1
+a4 1
+INCLUDE = -I/../include/ -I/../SimGrid-3.7.1/include/
+d9 1
+a9 1
+LIB = -lgsl -lgslcblas -lm -lsimgrid -rdynamic ../include/SimGrid-3.7.1/lib/libsimgrid.so.3.7.1 
+d13 1
+a13 1
+CFLAGS = -g -ansi -Wall -lrt -L/home/lthurlow/Genome/SimGrid-3.7.1/lib
+d31 1
+a31 1
+	g++ $(CFLAGS) $(INCLUDE) -o $@@ $^ $(LIB) 
+d38 3
+a40 12
+	touch sim
+	touch main.o generate_request.o file_format.o util.o randvars2.o routing.o simulation.o
+	touch simgrid.o
+	touch pref pref-0.gb pref.alt graph.dot graph.pdf
+	touch platform.xml deployment.xml
+	touch sim.err
+	rm sim 
+	rm main.o generate_request.o file_format.o util.o randvars2.o routing.o simulation.o
+	rm simgrid.o
+	rm pref pref-0.gb pref.alt graph.dot graph.pdf
+	rm platform.xml deployment.xml
+	rm sim.err
+@
+
+
+1.11
+log
+@*** empty log message ***
+@
+text
+@d6 1
+a6 1
+         routing.cc simgrid.cc #simulation.cc generate_request.cc
+d8 1
+a8 1
+         routing.o  simgrid.o  #simulation.o generate_request.o 
+@
+
+
+1.10
+log
+@*** empty log message ***
+@
+text
+@d5 4
+a8 4
+SOURCE = main.cc generate_request.cc file_format.cc util.cc randvars2.cc \
+         routing.cc simgrid.cc #simulation.cc
+OBJ =    main.o  generate_request.o  file_format.o  util.o  randvars2.o  \
+         routing.o  simgrid.o  #simulation.o
+@
+
+
+1.9
+log
+@8/23/12
+Changed Makefile to work with SimGrid.  Outline on pg. 45 of notebook
+@
+text
+@d6 1
+a6 1
+         routing.cc simulation.cc simgrid.cc
+d8 1
+a8 1
+         routing.o  simulation.o  simgrid.o
+d10 2
+a11 2
+HEADERS = bgl_graph_info.hpp types.hpp randvars2.hpp routing.hpp simulation.hpp \
+          simgrid.hpp
+@
+
+
+1.8
+log
+@8-7-12
+No change.  Moving development from stardance to puertocayo
+@
+text
+@d1 4
+a4 1
+INCLUDE = -I/campus/lthurlow/Genome/boost_1_48_0/
+d6 1
+a6 1
+         routing.cc simulation.cc
+d8 4
+a11 5
+         routing.o  simulation.o
+#RANDSRC = mcarlo2.c randvars2.c randvars2.h
+#RANDEXE = mcarlo
+LIB = -lgsl -lgslcblas -lm
+HEADERS = bgl_graph_info.hpp types.hpp randvars2.hpp routing.hpp simulation.hpp
+d13 1
+a13 1
+CFLAGS = -g -ansi -Wall
+a15 1
+#all: $(EXE)
+d17 5
+a21 3
+# build monte carlo executable.
+#$(RANDEXE): $(RANDSRC)
+#	g++ $(CFLAGS) -lgsl -lgslcblas -o $@@ $^
+d40 1
+d42 2
+d46 1
+d48 2
+@
+
+
+1.7
+log
+@7/19/12
+Added routing.cc & simulation.cc/hpp
+@
+text
+@d28 1
+a28 1
+	g++ $(CFLAGS) $(INCLUDE) $(LIB) -o $@@ $^ 
+@
+
+
+1.6
+log
+@..
+@
+text
+@d2 4
+a5 2
+SOURCE = main.cc generate_request.cc file_format.cc util.cc randvars2.cc routing.cc
+OBJ =    main.o  generate_request.o  file_format.o  util.o  randvars2.o  routing.o
+d9 1
+a9 1
+HEADERS = bgl_graph_info.hpp types.hpp randvars2.hpp routing.hpp
+d36 1
+a36 1
+	touch main.o generate_request.o file_format.o util.o randvars2.o
+d39 1
+a39 1
+	rm main.o generate_request.o file_format.o util.o randvars2.o
+@
+
+
+1.5
+log
+@7/7/12
+Added new files for the makefile, including bgl graph info
+@
+text
+@d2 2
+a3 2
+SOURCE = main.cc generate_request.cc file_format.cc util.cc randvars2.cc
+OBJ =    main.o  generate_request.o  file_format.o  util.o  randvars2.o 
+d7 1
+a7 1
+HEADERS = types.hpp randvars2.hpp bgl_graph_info.hpp
+d31 1
+@
+
+
+1.4
+log
+@6/29/12
+Makefile now uses more files, mainly those which Brad wrote for CAR
+these files focus on using distributions for modeling
+@
+text
+@d3 1
+a3 1
+OBJ = main.o generate_request.o file_format.o util.o randvars2.o
+d6 2
+a7 2
+LIB = -lgsl -lgslcblas
+HEADERS = types.hpp randvars2.hpp
+d10 1
+d34 1
+a34 1
+	touch pref pref-0.gb pref.alt
+d37 1
+a37 1
+	rm pref pref-0.gb pref.alt
+@
+
+
+1.3
+log
+@Makefile now includes all files, mainly from the use of
+a lot of macros
+@
+text
+@d2 6
+a7 3
+SOURCE = main.cc generate_request.cc file_format.cc util.cc
+OBJ = main.o generate_request.o file_format.o util.o
+HEADERS = types.hpp
+d11 5
+d19 2
+a20 2
+%.o: %.c $(HEADERS)
+	g++ $(INCLUDE) -c -o $@@ $< $(CFLAGS)
+d25 1
+a25 1
+	g++ $(INCLUDE) -o $@@ $^ 
+a26 1
+clean :
+a27 1
+	rm sim 2> /dev/null
+a28 1
+	rm main.o generate_request.o file_format.o util.o
+d30 7
+a36 1
+	rm pref pref-0.gb pref.alt 2> /dev/null
+@
+
+
+1.2
+log
+@..
+@
+text
+@d2 5
+a6 1
+TEST = -lboost_system
+a7 2
+sim: main.o
+	g++ $(INCLUDE) -o sim main.o
+d9 9
+a17 2
+sim.o :
+	g++ $(INCLUDE) -c -ansi -Wall -Wpedantic -std=gnu99 main.cc
+d20 6
+a25 5
+	rm sim
+	rm main.o
+	rm pref
+	rm pref-0.gb
+	rm pref.alt
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d13 3
+@

@@ -1,0 +1,528 @@
+head	1.14;
+access;
+symbols;
+locks
+	lthurlow:1.14; strict;
+comment	@// @;
+
+
+1.14
+date	2012.09.25.22.59.00;	author lthurlow;	state Exp;
+branches;
+next	1.13;
+
+1.13
+date	2012.09.06.17.47.06;	author lthurlow;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2012.09.05.19.14.28;	author lthurlow;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2012.08.31.05.39.36;	author lthurlow;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2012.08.23.20.40.24;	author lthurlow;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2012.08.03.22.02.19;	author lthurlow;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2012.07.27.19.46.36;	author lthurlow;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2012.07.27.00.02.06;	author lthurlow;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2012.07.23.17.33.20;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.07.19.21.46.35;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.07.09.22.56.42;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.06.27.23.41.00;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.06.27.22.34.30;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@6/27/12
+3:30pm
+Util now handles are the utility functions that help me
+or help the user use the program
+,
+@
+
+
+1.14
+log
+@9/25/12
+Cleaned up OLD code - submittable
+@
+text
+@#include <stdio.h>
+#include "boost/tuple/tuple.hpp"
+#include "types.hpp"
+#include "bgl_graph_info.hpp"
+#include "routing.hpp"
+
+using namespace std;
+
+/* Print help menu */
+void print_help(){
+  fprintf(stderr,"Cloud Data Distribution Help Menu:\n");
+  fprintf(stderr,"main [s:o:v:d:r:w:W:c:C:p:P:a:D:hH]\n");
+  fprintf(stderr,"\t[s] | {100} | Seed, pass the seed value\n");
+  fprintf(stderr,"\t[t] | {100} | Number of Pulls to simulate\n");
+  fprintf(stderr,"\t[o] | {10}  | Number of Objects to simulate\n");
+  fprintf(stderr,"\t[v] | {10}  | Vertices in the graph to be generated\n");
+  fprintf(stderr,"\t[d] | {5/9} | Degree of each node in graph\n");
+  fprintf(stderr,"\t[r] | {1} | Routing Algorithm to Use\n");
+  fprintf(stderr,"\t\t[1] OSPF\n");
+  fprintf(stderr,"\t[w] | {0,100} | Minimum weight, [W] maximum weight - Uniform\n");
+  fprintf(stderr,"\t\t Weights are converted to latencies, disparity of graph\n");
+  fprintf(stderr,"\t[c] | {1.25k} | Minimum capacity, [C] maximum capacity - Uniform\n");
+  fprintf(stderr,"\t\t [c] use without [C] to set a Constant capacity\n");
+  fprintf(stderr,"\t[p] | 20 | Push Rate - Exponetial\n");
+  fprintf(stderr,"\t[P] | 30 | Pull Rate - Exponential\n");
+  fprintf(stderr,"\t[D] | {1} | Data Distribution Policy\n");
+  fprintf(stderr,"\t\t[1] Single Server Policy\n");
+  fprintf(stderr,"\t\t[2] Single Server Policy with Caching\n");
+  fprintf(stderr,"\t[h]elp, for this help menu\n");
+  fprintf(stderr,"\t[H]elp, prints out all simulation variable values\n");
+  return;
+}
+
+/*prints simulation variable values*/
+void print_input(UI in,Policy P){
+  char* pol;
+  char* route;
+  switch(P->get_policy()){
+    case 1:
+      pol = (char*)"Single Server - No Caching";
+      break;
+    case 2:
+      pol = (char*)"Single Server - Caching Enabled";
+      break;
+  }
+  switch(in->get_route()){
+    case 1:
+      route = (char*)"OSPF";
+      break;
+  }
+  fprintf(stderr,"Simulation Modifiers\n");
+  fprintf(stderr,"\tSEED INPUT: %d\n",in->get_seed());
+  fprintf(stderr,"\t# of PULLS: %ld\n",in->get_pulls());
+  fprintf(stderr,"\t# of OBJECTS: %ld\n",in->get_objects());
+  fprintf(stderr,"\tObject Push Rate: %4f\n", in->get_pushrate());
+  fprintf(stderr,"\tObject Pull Rate: %4f\n", in->get_pullrate());
+  fprintf(stderr,"\tObject Size (MB): %ld\n", in->get_size());
+  fprintf(stderr,"\tPolicy: %d (%s)\n",P->get_policy(),pol);
+  fprintf(stderr,"Graph Modifiers\n");
+  fprintf(stderr,"\t# of VERTICES: %d\n",in->get_vertices());
+  fprintf(stderr,"\tDegree: %f\n", (in->get_edgechance()*(in->get_vertices()-1)));
+  fprintf(stderr,"\tWeight: [%4f,%4f]\n",in->get_minw(),in->get_maxw());
+  fprintf(stderr,"\tCapacity (MB): [%ld,%ld]\n",in->get_mincap(),in->get_maxcap());
+  fprintf(stderr,"\tRouting Algorithm: %s\n",route);
+}
+
+/* print out the graph*/
+void print_graph(Graph G){
+  std::pair<edge_iter, edge_iter> ep;
+  edge_iter ei, ei_end;
+  /* FIX TO PRINT EDGE AND VERIFY GRAPH. */ 
+  for (tie(ei, ei_end) = boost::edges(G); ei != ei_end; ++ei){
+    edge_info prop = G[*ei];//.edge_info.weight;
+    DEBUGE("Edge: %s - %s :: Weight: %d , Capacity: %d\n", 
+          G[boost::source(*ei, G)].name.c_str(), G[target(*ei, G)].name.c_str(), 
+          prop.weight,prop.capacity);
+    }
+}
+@
+
+
+1.13
+log
+@*** empty log message ***
+@
+text
+@a1 1
+
+a2 1
+
+a6 1
+
+a8 22
+/* Print out requests & gathers statistics*/
+void print_requests(request *t, int nr){
+  int i;
+  int pulls = 0;
+  DEBUGO("%8s | %4s | %4s | %4s | %8s\n", 
+        "Label", "Type", "Src", "Dest", "Time");
+  DEBUGO("--------------------------------------\n");
+  for (i = 0; i < nr; i++){
+    /*prints out each request*/
+    DEBUGO("%-8ld |  %-2d  | %4d | %4d | %8ld \n", t[i].get_label(),
+      t[i].get_type(), t[i].get_source(), t[i].get_dest(), t[i].get_time());
+      //t[i].get_src_dest().first, t[i].get_src_dest().second,
+    if (t[i].get_type() == 1) pulls++; //count # of pulls of requests
+  }
+  DEBUGO("# of pushes: %4d\n",nr-pulls);
+  DEBUGO("# of pulls %4d\n",pulls);
+  DEBUGO("push ratio: %4.4f\n",(nr-pulls)/(float)(nr));
+  DEBUGO("pull/push ratio: %4.4f\n",pulls/(float)(nr-pulls));
+  //DEBUG("To increase pulls, decrease vertices, or increase requests\n");
+  //DEBUG("10:1 ~ 10 vertices, 2:1 ~ 20 vertices\n");
+}
+
+d12 9
+a20 7
+  fprintf(stderr,"main [s:o:v:d:w:W:c:C:p:a:D:h]\n");
+  fprintf(stderr,"\t[s] Seed, pass the seed value\n");
+  fprintf(stderr,"\t[t] Number of Pulls to simulate\n");
+  fprintf(stderr,"\t[o] Number of Objects to simulate\n");
+  fprintf(stderr,"\t[v] Vertices in the graph to be generated\n");
+  fprintf(stderr,"\t[d] Degree of each node in graph\n");
+  fprintf(stderr,"\t[w] Minimum weight, [W] maximum weight - Uniform\n");
+d22 1
+a22 1
+  fprintf(stderr,"\t[c] Minimum capacity, [C] maximum capacity - Uniform\n");
+d24 3
+a26 3
+  fprintf(stderr,"\t[p] Push Rate - Binomial 0.0-1.0\n");
+  fprintf(stderr,"\t[a] Arrivial rate for pushes - Exponential\n");
+  fprintf(stderr,"\t[D] Data Distribution Policy\n");
+a28 2
+  fprintf(stderr,"\t\t[3] Multiple Server Policy\n");
+  fprintf(stderr,"\t\t[4] Multiple Server Policy with Caching\n");
+d30 1
+d34 34
+a73 1
+    
+a74 1
+          //source(ei,G), target(ei,G),prop.weight,prop.capacity);
+a76 2
+    //std::cout << edge_distance[*ei] << endl;
+    //std::cout << "1";
+a78 38
+
+void print_request(Request R){
+  DEBUGO("Request: \n");
+  DEBUGO("Type: %d, Src: %d, Dest: %d, Label: %ld, Time Created: %ld, Size: %d\n",
+        R->get_type(), R->get_source(), R->get_dest(), R->get_label(), R->get_time(),
+        R->get_size());
+}
+
+/* REQUIRES SIMULATION.H{{
+void print_path(paths *p){
+  #ifdef PRINT_DEBUG
+  paths::iterator i;
+  DEBUGO("Path Used: ");
+  for (i = p->begin(); i != p->end(); ++i){
+    fprintf(stderr,"(%d,%d) ", i->first, i->second);
+  }
+  fprintf(stderr, "\n");
+  #endif
+} 
+
+void print_active(AR ar){
+#ifdef PRINT_DEBUG
+  DEBUGO("Active Request: \n");
+  DEBUGO("\tTime :: Created: %ld, Expected End: %ld, Last Update: %ld, Completed: %ld\n",
+        ar->get_tcre(), ar->get_etoc(), ar->get_lupd(), ar->get_tcom());
+  DEBUGO("\tBottleneck : %f, Data Trans: %d, Obj Pulls: %d\n",
+        ar->get_bb(), ar->get_dt(), ar->get_pop());
+  DEBUGO("\tPath Taken: ");
+  
+  paths::iterator i;
+  for (i = ar->get_path()->begin(); i != ar->get_path()->end(); ++i){
+    fprintf(stderr,"(%d,%d) ", i->first, i->second);
+  }
+    fprintf(stderr,"\n");
+  DEBUGO("Attached ::"); print_request(ar->get_req());
+#endif
+}
+*/
+@
+
+
+1.12
+log
+@*** empty log message ***
+@
+text
+@d39 1
+@
+
+
+1.11
+log
+@8/30/12
+Allows more user input
+@
+text
+@a6 1
+#include "simulation.hpp"
+d37 1
+a37 1
+  fprintf(stderr,"main [s:o:v:d:w:W:c:C:p:a:yhD:R:T<paramlist>]\n");
+d43 1
+d45 1
+d80 1
+d90 1
+a90 1
+}
+d109 1
+@
+
+
+1.10
+log
+@8/23/12
+@
+text
+@d38 1
+a38 1
+  fprintf(stderr,"main [s:r:v:d:w:W:c:C:p:t:yhD:R:T<paramlist>]\n");
+d40 1
+a40 1
+  fprintf(stderr,"\t[r] Number of requests to generate\n");
+d46 1
+a46 3
+  fprintf(stderr,"\t[t] Time arrivial rate for pushes - Exponential\n");
+  fprintf(stderr,"\t[y] Remove generated files upon completion\n");
+  fprintf(stderr,"\t[T] Modify the GT-ITM topology\n");
+d48 4
+a51 1
+  fprintf(stderr,"\t[R] Routing Algorithm\n");
+@
+
+
+1.9
+log
+@8-3-12
+NO CHANGE, JUST COPYING
+@
+text
+@d17 1
+a17 1
+  DEBUG("%8s | %4s | %4s | %4s | %8s\n", 
+d19 1
+a19 1
+  DEBUG("--------------------------------------\n");
+d22 1
+a22 1
+    DEBUG("%-8ld |  %-2d  | %4d | %4d | %8ld \n", t[i].get_label(),
+d27 4
+a30 4
+  DEBUG("# of pushes: %4d\n",nr-pulls);
+  DEBUG("# of pulls %4d\n",pulls);
+  DEBUG("push ratio: %4.4f\n",(nr-pulls)/(float)(nr));
+  DEBUG("pull/push ratio: %4.4f\n",pulls/(float)(nr-pulls));
+d62 1
+a62 1
+    DEBUG("Edge: %s - %s :: Weight: %d , Capacity: %d\n", 
+d72 2
+a73 2
+  DEBUG("Request: \n");
+  DEBUG("Type: %d, Src: %d, Dest: %d, Label: %ld, Time Created: %ld, Size: %d\n",
+d81 1
+a81 1
+  DEBUG("Path Used: ");
+d91 2
+a92 2
+  DEBUG("Active Request: \n");
+  DEBUG("\tTime :: Created: %ld, Expected End: %ld, Last Update: %ld, Completed: %ld\n",
+d94 1
+a94 1
+  DEBUG("\tBottleneck : %f, Data Trans: %d, Obj Pulls: %d\n",
+d96 1
+a96 1
+  DEBUG("\tPath Taken: ");
+d103 1
+a103 1
+  DEBUG("Attached ::"); print_request(ar->get_req());
+@
+
+
+1.8
+log
+@7/27/12
+Added another utility function
+@
+text
+@d79 1
+d86 1
+d90 1
+d100 1
+a100 1
+    if (PRINT_DEBUG) fprintf(stderr,"(%d,%d) ", i->first, i->second);
+d102 1
+a102 1
+  if (PRINT_DEBUG) fprintf(stderr,"\n");
+d104 1
+@
+
+
+1.7
+log
+@7/26/12
+working on request prints
+@
+text
+@d78 9
+d89 1
+a89 1
+  DEBUG("Time :: Created: %ld, Expected End: %ld, Last Update: %ld, Completed: %ld\n",
+d91 1
+a91 1
+  DEBUG("Bottleneck : %f, Data Trans: %d, Obj Pulls: %d\n",
+d93 7
+a99 1
+  //DEBUG("Path Taken: ")
+@
+
+
+1.6
+log
+@7/23/12
+changed print statement for labels from int to long
+,
+@
+text
+@d2 1
+d4 1
+d7 2
+d61 1
+d68 18
+a85 1
+  }
+@
+
+
+1.5
+log
+@7/19/12
+Changed the main help menu to add all the features that
+will be avaliable at some point
+modified orint statment
+,
+@
+text
+@d13 3
+a15 3
+  DEBUG("%8s | %4s | %4s | %8s\n %30s\n", 
+        "Label", "Type", "Src", "Time",
+        "--------------------------------------");
+d18 2
+a19 2
+    DEBUG("%-8d |  %-2d  | %4d | %8ld \n", t[i].get_label(),
+      t[i].get_type(), t[i].get_source(), t[i].get_time());
+d24 1
+a24 1
+  DEBUG("# of pulls %4d",pulls);
+@
+
+
+1.4
+log
+@..
+@
+text
+@d23 2
+a24 1
+  DEBUG("# of pushes: %4d\n# of pulls %4d\n",nr-pulls,pulls);
+d34 14
+a47 6
+  fprintf(stderr,"main [s:n:V:E:h]\n");
+  fprintf(stderr,"[s]eed, pass the seed value\n");
+  fprintf(stderr,"[n]umber of requests to generate\n");
+  fprintf(stderr,"[V]ertices in the graph to be generated\n");
+  fprintf(stderr,"[E]ertices in the graph to be generated\n");
+  fprintf(stderr,"[h]elp, for this help menu\n");
+d55 6
+a60 1
+  //for (tie(ei, ei_end) = boost::edges(G); ei != ei_end; ++ei)
+d63 1
+@
+
+
+1.3
+log
+@6/29/12
+Modified code to remove desination printing
+@
+text
+@d4 1
+d41 9
+@
+
+
+1.2
+log
+@6/27/12
+5pm
+Working version now with label
+uses map instead of a set
+@
+text
+@d12 2
+a13 2
+  DEBUG("%8s |%4s| %4s - %4s | %8s\n %30s\n", 
+        "Label", "Type", "Src", "Dest", "Time",
+d17 3
+a19 4
+    DEBUG("%-8ld | %-2d | %4d - %-4d | %8ld \n", t[i].get_label(),
+      t[i].get_type(),
+      t[i].get_src_dest().first, t[i].get_src_dest().second,
+      t[i].get_time());
+d23 1
+d25 2
+a26 2
+  DEBUG("To increase pulls, decrease vertices, or increase requests\n");
+  DEBUG("10:1 ~ 10 vertices, 2:1 ~ 20 vertices\n");
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 3
+d17 2
+a18 1
+    DEBUG("%2d %4d %4d %8ld \n",t[i].get_type(),
+@

@@ -1,0 +1,74 @@
+head	1.2;
+access;
+symbols;
+locks
+	lthurlow:1.2; strict;
+comment	@// @;
+
+
+1.2
+date	2012.07.07.18.15.49;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@6/29/12
+header file for randvars.  GNU scientfic lib header
+,
+@
+
+
+1.2
+log
+@7/7/12
+Didnt modify
+@
+text
+@#ifndef _RANDVARS2_HPP_
+#define _RANDVARS2_HPP_
+
+#include <limits.h>
+#include <gsl/gsl_rng.h>
+
+extern gsl_rng *r;
+
+extern double Exponential(const double a);
+
+extern double UniformC(const double min, const double max);
+
+extern unsigned int UniformD(const unsigned int min, const unsigned int max);
+
+extern unsigned int Geometric(const double p);
+
+extern unsigned int Binomial(const int n, const double p);
+
+// Poisson random variable with mean a.
+extern unsigned int Poisson(const double a);
+
+// m-Erlang random variable with mean a.
+extern double Erlang(int m, double a);
+
+// Gaussian random variable with mean m and standard deviation s.
+extern double Gaussian(double m, double s);
+
+// Lognormal random variable with mean m and standard deviation s.
+extern double Lognormal(double m, double s);
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 3
+d30 2
+@

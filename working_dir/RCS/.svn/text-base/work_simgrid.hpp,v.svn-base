@@ -1,0 +1,103 @@
+head	1.1;
+access;
+symbols;
+locks
+	lthurlow:1.1; strict;
+comment	@// @;
+
+
+1.1
+date	2012.09.06.17.47.06;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef __SIMGRID_HPP__
+#define __SIMGRID_HPP__
+
+#include "routing.hpp"
+#include "types.hpp"
+
+#include "msg/msg.h" // for xbt_dynar declaration
+
+
+class proc_info{
+  private:
+    int recv; //host receiving data
+    double size; // optional to change this from default 300GB
+    long time;
+    uint8_t pop;
+    UI input;
+  public:
+    proc_info(int r, int sz, double t,uint8_t p){
+    //  send = sd;
+      recv = r;
+      size = sz;
+      time = t;
+      pop = p;
+    }
+    void set_UI(UI u){ input = u; }
+    void set_time(long t){ time = t; }
+
+    UI get_UI(void){ return input; }
+    double get_size(){ return size; }
+    long get_time(){ return time; }
+    int get_recv(){ return recv; }
+    uint8_t get_pop(){ return pop; }
+};
+
+class task_info{
+  private:
+    long label;
+    int pop;
+    double start;
+    long task_id;
+  public:
+    long get_label(){ return label; }
+    int get_pop(){ return pop; }
+    double get_start(){ return start;}
+    long get_id(){ return task_id; }
+
+    void set_label(long l){ label = l; }
+    void set_pop(int p){ pop = p; }
+    void set_start(double t){ start = t; }
+
+    task_info(long l, int p, int t){
+      label = l;
+      pop = p;
+      task_id = t;
+    }
+
+    task_info(long l, int p){
+      label = l;
+      pop = p;
+    }
+
+    task_info(){
+      label = 0;
+      pop = 0;
+    }
+};
+
+void write_platform(Graph *G, next_hop *H, UI in);
+void write_deploy(Graph *G, next_hop *H);
+
+int s_recv(int argc, char *argv[]);
+int send(int argc, char *argv[]);
+
+void simGrid(void);
+
+void sim(UI input, Policy P);
+void single_server(UI input);
+
+#endif
+@

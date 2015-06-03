@@ -1,0 +1,592 @@
+head	1.11;
+access;
+symbols;
+locks
+	lthurlow:1.11; strict;
+comment	@// @;
+
+
+1.11
+date	2012.09.25.23.18.41;	author lthurlow;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2012.09.25.22.59.00;	author lthurlow;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2012.09.05.19.14.28;	author lthurlow;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2012.08.31.05.39.36;	author lthurlow;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2012.08.23.20.40.24;	author lthurlow;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2012.07.19.21.46.35;	author lthurlow;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2012.07.09.22.56.42;	author lthurlow;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2012.07.07.20.42.48;	author lthurlow;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2012.07.07.18.15.49;	author lthurlow;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2012.06.29.19.36.20;	author lthurlow;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2012.06.27.22.34.30;	author lthurlow;	state Exp;
+branches;
+next	;
+
+
+desc
+@6/27/12
+3:30pm
+File format now handles the creating and converting of gt-itm
+based files.  This also includes the conversion from gt-tim
+sgb2alt files, and from alt format to dot file format for
+graphviz to read into a file directly.
+@
+
+
+1.11
+log
+@9/25/12
+removed chgrp
+@
+text
+@#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <set>
+#include <gsl/gsl_rng.h>
+#include <boost/tuple/tuple.hpp>
+#include <boost/graph/graphviz.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include "types.hpp"
+#include "randvars2.hpp"
+#include "bgl_graph_info.hpp"
+
+using namespace std;
+using namespace boost;
+
+
+static const size_t npos = -1; //defined in string::npos, for find() not found
+
+/*
+ * Generate the graph to run simulation on.
+ * Make a preference file that itm can then use to generate the graph
+ * Prefernece file has special values, see comments below.
+ *
+*/
+
+void gen_graph(user_input *i){
+
+  int syscheck = 0; //return value for system calls
+
+  /* Makes gt-itm not crash.*/
+  fprintf(stderr, "Exporting MALLOC_CHECK_=0\n");
+  syscheck = system("export MALLOC_CHECK_=0"); //makes itm not crash
+  if (syscheck != 0){
+    fprintf(stderr, "Export Command Failed!");
+    exit(1);
+  }
+
+  /* create a file to use for prefrences for gt-itm*/
+  ofstream pref;
+  pref.open("pref");
+
+  /* 
+   * geo: flat random graph 
+   * hier: N-level hierarchial graph
+   * ts: transit-stub graph
+   * 
+   * Fromat:
+   * <method> [above] <# of graphs> <seed> [optional]
+  */
+
+  pref << "geo 1\n"; // if needed we can change this so it isnt flat
+
+  /*
+   * Graph Parameters:
+   * n: number of nodes in graph
+   * scale: one-sided dimension of space in which nodes are distributed
+   * edgemethod:
+   *   1) Waxman 1
+   *   2) Waxman 2
+   *   3) Pure Random 
+   *   4) Door-Leslie
+   *   5) Exponential 
+   *   6) Locality
+   * alpha: random graph parameter (0 =< alpha =< 1.0)
+   * beta: " " (0 <= beta)
+   * gamma: " " (0 <= gamma)
+   * geo: <n> <scale> <edgemethod> <alpha> [<beta><gamma>]
+  */
+  char preferences[255];
+  DEBUGE("verts: %d : edge: %f\n", i->get_vertices(), i->get_edgechance());
+  sprintf(preferences, "%d %d %d %f\n", 
+  i->get_vertices(), 10, 3, i->get_edgechance());
+  
+  pref << preferences;
+  pref.close();
+
+  /* Run itm on pref file created above. */
+  fprintf(stderr,"Calling ../bin/itm pref\n");  
+  syscheck = system("../bin/itm pref");  
+  if (syscheck != 0){
+    fprintf(stderr, "itm not found or failed to run!\n");
+    exit(1);
+  }
+
+  /*convert gb file to readable alternate format*/
+  fprintf(stderr,"Calling ../bin/sgb2alt pref-0.gb pref.alt\n");
+  syscheck = system("../bin/sgb2alt pref-0.gb pref.alt");
+  if (syscheck == 1){
+    fprintf(stderr, "sgb2alt failed to run, not found, incompatable file!\n");
+    exit(1);
+  }
+
+}
+
+/*
+ * Convert the graph from the alternative format to a dot format
+ * that can easily be loaded into BGL as a graph.
+ * This function will have some hard coding variables that may need to be
+ * changed at a later date.
+*/
+
+Graph con_graph(UI in){
+  ifstream alt;
+  alt.open("pref.alt");
+  if (!alt){
+    fprintf(stderr, "Error: pref.alt does not Exist\n");
+  }
+
+  gsl_rng_env_setup(); //set up our random
+  r = gsl_rng_alloc(gsl_rng_mt19937);
+  gsl_rng_set(r, in->get_seed()); //use seed
+
+  string line, v1, v2, weight, whitespace;
+  int V1, V2;
+  int num_verts = 1; //max of V1, V2.
+  vector <pair< pair <int,int>, pair <int, int> > > edges;
+  while(getline(alt,line) != NULL){
+    if (line.find("EDGES") != npos){
+      while(getline(alt,line) != NULL){
+        istringstream stream(line);
+        stream >> v1;
+        stream >> v2;
+        stream >> weight; //throw away itm weight, generate our own.
+        V1 = atoi(v1.c_str());
+        V2 = atoi(v2.c_str());
+        /*
+         * This code will determine the number of vertices that are used
+         * in the graph, it will do this by checking if either number found
+         * is larger than a previous one, this will find the number of
+         * vertices under the assumption that gt-itm will generate fully
+         * connected graphs, and therefore, the largest value will be the
+         * the highest value seen.  It will also be offset by 1, because
+         * gt-itm starts nodes at 0. This is compensated later in the code.
+         */
+        if (V1 > num_verts || V2 > num_verts){
+          if (V1 > V2){
+            num_verts = V1;
+          } else {
+            num_verts = V2;
+          }
+        }
+        /* generate weights and capacities for this link*/
+        long weight;
+        long capacity;
+        long minw = in->get_minw();
+        long maxw = in->get_maxw();
+        long minc = in->get_mincap();
+        long maxc = in->get_maxcap();
+        if (minw == maxw){
+          weight = minw; //if they are set to same value, all links have
+        } else {
+          weight = UniformD(minw,maxw);  //otherwise, distributed
+        }
+        if (minc == maxc){
+          capacity = minc;
+        } else {
+          capacity = UniformD(minc,maxc); 
+        }
+        /* make them into pairs, then through int a vector.*/
+        pair<int,int> edge (V1,V2);
+        pair <int, int> w_c (weight,capacity);
+        pair < pair <int, int> , pair <int, int> > edge_prop (edge,w_c);
+        edges.push_back(edge_prop);
+      }
+    }
+  }
+
+  num_verts += 1;  //above code doesnt take into account gt-itm starts at 0
+  Graph g(num_verts); //generate graph with num_verts nodes.
+  //convert from alternative format to dot format for graphviz.
+  for (int itor = 0; itor < num_verts; ++itor){
+    //set the name for each node to its index
+    g[itor].name = lexical_cast<string>(itor);
+  }
+  
+  //add the edges to the graph now.
+  for(vector< pair< pair < int, int>, pair <int, int> > >::iterator 
+    it = edges.begin(); it != edges.end(); ++it) {
+    //let ele = be ((u,v),(w,c)) for both edge and properties
+    pair< pair < int, int>, pair <int, int> > ele = (*it);
+    edge_info prop; //set the properties to add to the graph with the edge.
+    prop.weight = ele.second.first;
+    prop.capacity = ele.second.second;
+    pair<edge_desc, bool> res; // make sure that it added the edge.
+    res = add_edge(ele.first.first,ele.first.second, prop, g);
+    if (res.second == false){
+      DEBUGE("Failed to add edge to graph!\n");
+      DEBUGE("Edge in question: %d-%d\n",
+              ele.first.first,ele.second.second);
+      exit(3);
+    }
+  }
+
+  /* now open up the dot file and write the graph to it */
+  ofstream dot("graph.dot");
+  write_graphviz(dot, g, 
+    boost::make_label_writer(boost::get(&vert_info::name, g)),
+    make_edge_writer(boost::get(&edge_info::weight,g), 
+    boost::get(&edge_info::capacity,g)));
+
+  DEBUGE("Converting dot file to pdf format -- RUN WAS A:  ");
+  errno = system("dot -Tpdf graph.dot -o graph.pdf &> /dev/null");
+  if (errno == 0){
+    DEBUGE("SUCCESS!\n");
+  } else {
+    DEBUGE("FAILURE!\n");
+  }
+
+  return g;
+}
+@
+
+
+1.10
+log
+@9/25/12
+Cleaned up code - submittable
+@
+text
+@a215 13
+  DEBUGO("Modifying graph files to owner group genomics\n");
+  int err = system("chgrp genomics graph.* ");
+  if (err != 0){
+    DEBUGE("Unable to change write permissions, insure you are in genomics group!\n");
+    exit(7);
+  }
+  DEBUGO("Modifying preference files to owner group genomics\n");
+  err = system("chgrp genomics pref* ");
+  if (err != 0){
+    DEBUGE("Unable to change write permissions, insure you are in genomics group!\n");
+    exit(7);
+  }
+
+@
+
+
+1.9
+log
+@*** empty log message ***
+@
+text
+@d116 1
+a116 1
+  gsl_rng_env_setup();
+d118 1
+a118 1
+  srand(in->get_seed());
+d157 1
+a157 1
+          weight = minw;
+d159 1
+a159 1
+          weight = UniformD(minw,maxw); 
+d194 2
+a195 2
+      fprintf(stderr, "Failed to add edge to graph!\n");
+      fprintf(stderr, "Edge in question: %d-%d\n",
+d208 1
+a208 1
+  fprintf(stderr, "Converting dot file to pdf format -- RUN WAS A:  ");
+d211 1
+a211 1
+    fprintf(stderr,"SUCCESS!\n");
+d213 14
+a226 1
+    fprintf(stderr,"FAILURE!\n");
+@
+
+
+1.8
+log
+@8/30/12
+Allows more user input
+@
+text
+@d109 1
+a109 1
+Graph con_graph(int seed){
+d118 1
+a118 1
+  srand(seed);
+d150 16
+a165 4
+        int weight = UniformD(10,100); 
+        //int capacity = UniformD(200,10000); // in Megabytes/s
+        //For now we are going to set capacity to 10Gb links
+        int capacity = 10000;
+@
+
+
+1.7
+log
+@8/23/12
+@
+text
+@d76 2
+a77 1
+  char preferences[20];
+a81 1
+  //pref << "10 10 3 .2\n";
+@
+
+
+1.6
+log
+@7/19/12
+No major changes.
+@
+text
+@d85 2
+a86 2
+  fprintf(stderr,"Calling ~/Genome/GT-ITM/bin/itm pref\n");  
+  syscheck = system("~/Genome/GT-ITM/bin/itm pref");  
+d93 2
+a94 2
+  fprintf(stderr,"Calling ~/Genome/GT-ITM/bin/sgb2alt pref-0.gb pref.alt\n");
+  syscheck = system("~/Genome/GT-ITM/bin/sgb2alt pref-0.gb pref.alt");
+a195 1
+  
+@
+
+
+1.5
+log
+@..
+@
+text
+@d151 3
+a153 1
+        int capacity = UniformD(200,10000); // in Megabytes/s
+@
+
+
+1.4
+log
+@Comments Added
+@
+text
+@a22 19
+/*  These two templates are required for printing out graph to dot format */
+template <class WeightMap,class CapacityMap> class edge_writer {
+  public:
+    edge_writer(WeightMap w, CapacityMap c) : wm(w),cm(c) {}
+    template <class Edge>
+    void operator()(ostream &out, const Edge& e) const {
+      out << "[label=\" W = " << wm[e] << "\\n C = " << cm[e] << "\"]";
+  }
+  private:
+    WeightMap wm;
+    CapacityMap cm;
+};
+
+template <class WeightMap, class CapacityMap>
+inline edge_writer<WeightMap,CapacityMap> 
+make_edge_writer(WeightMap w,CapacityMap c) {
+  return edge_writer<WeightMap,CapacityMap>(w,c);
+}
+
+d109 1
+a109 1
+void con_graph(int seed){
+d187 17
+a203 6
+/* now open up the dot file and write the graph to it */
+ofstream dot("graph.dot");
+write_graphviz(dot, g, 
+  boost::make_label_writer(boost::get(&vert_info::name, g)),
+  make_edge_writer(boost::get(&edge_info::weight,g), 
+  boost::get(&edge_info::capacity,g)));
+@
+
+
+1.3
+log
+@7/7/12
+File format now converts to dot files
+@
+text
+@d23 11
+a33 12
+template <class WeightMap,class CapacityMap>
+class edge_writer {
+public:
+  edge_writer(WeightMap w, CapacityMap c) : wm(w),cm(c) {}
+  template <class Edge>
+  void operator()(ostream &out, const Edge& e) const {
+    out << "[label=\" W = " << wm[e] << "\\n C = " << cm[e] << "\"]";
+    //taillabel=\"" << cm[e] << "\"]";
+  }
+private:
+  WeightMap wm;
+  CapacityMap cm;
+a120 2
+
+
+a127 2
+//gsl_rng *r;
+
+d181 1
+a181 3
+  Graph g(num_verts);
+  vector <string> names;
+  printf("number fo verts: %d\n", num_verts);
+d184 1
+a184 1
+    printf("itor: %d\n",itor);
+a185 1
+    //names.push_back(lexical_cast<string>(itor));
+d191 1
+a191 1
+    //pair < int, int > ele = (*it);
+d193 1
+a193 1
+    edge_info prop;
+d196 1
+a196 1
+    pair<edge_desc, bool> res;
+d198 6
+a203 4
+    
+    //edge_info p = get (edge_info_prop_tag (), g, res.first);
+    //cout << "weight: " << p.weight << endl;
+
+d206 1
+a212 2
+
+
+@
+
+
+1.2
+log
+@6/29/12
+Now calls GT-ITM from campusrock's which uses the current version of itm
+@
+text
+@d10 5
+a14 1
+#include "boost/tuple/tuple.hpp"
+d17 2
+d23 21
+d122 2
+d131 3
+a133 1
+void con_graph(){
+d139 5
+d145 3
+a147 3
+  int W, V1, V2;
+  /* list of < <v1,v2>, weight > of each edge. */
+  vector <pair< pair<int,int>, int> > edges;
+a150 1
+        //cout << line << endl;
+d154 1
+a154 3
+        stream >> weight;
+        //cout << v1 << " " << v2 << " " << weight << endl;
+        W = atoi(weight.c_str());
+d157 20
+d178 3
+a180 2
+        pair< pair<int, int> ,int> link (edge,W);
+        edges.push_back(link);
+d185 9
+a193 5
+  for(vector<pair< pair < int, int>, int > >::iterator it = edges.begin(); 
+                                              it != edges.end(); ++it) {
+    pair < pair < int, int >, int > ele = (*it);
+    DEBUG("Edge: %2d %2s- %2d, Weight: %2d\n", 
+          ele.first.first, "",ele.first.second, ele.second);
+d195 14
+d210 1
+a210 1
+  //convert to dot format here.
+d212 5
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d26 1
+a26 1
+void gen_graph(){
+d31 1
+a31 1
+  system("echo export MALLOC_CHECK_=0");
+d69 6
+a74 1
+  pref << "10 10 3 .2\n";
+d78 2
+a79 2
+  system("echo ~/Genome/ns-allinone-2.35/gt-itm/bin/itm pref");  
+  syscheck = system("~/Genome/ns-allinone-2.35/gt-itm/bin/itm pref");  
+d86 2
+a87 2
+  system("echo ~/Genome/ns-allinone-2.35/gt-itm/bin/sgb2alt pref-0.gb pref.alt");
+  syscheck = system("~/Genome/ns-allinone-2.35/gt-itm/bin/sgb2alt pref-0.gb pref.alt");
+d137 3
+a139 1
+  
+d141 2
+@
